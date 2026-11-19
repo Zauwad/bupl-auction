@@ -292,3 +292,76 @@ export async function unfinishedSegments(): Promise<Array<{ segmentNumber: numbe
   }
   return results.sort((a, b) => a.segmentNumber - b.segmentNumber);
 }
+
+export interface ReauctionInput {
+  playerId: string;
+  startingBasePrice?: number;
+  adminUid?: string;
+}
+
+/**
+ * Re-introduce an unsold player back onto the auction block.
+ *
+ * Preconditions:
+ * 1. Auction must be live or paused.
+ * 2. No player currently on the block.
+ * 3. Target player must currently have status "unsold".
+ *
+ * Postconditions:
+ * - Player status becomes "current".
+ * - Base price is optionally updated if startingBasePrice is specified.
+ * - settings.currentPlayerId is set to playerId.
+ */
+export async function reauctionPlayer(input: ReauctionInput): Promise<Player> {
+  const { playerId, startingBasePrice } = input;
+  const settings = await loadSettings();
+
+  if (settings.auctionStatus !== "live" && settings.auctionStatus !== "paused") {
+    throw new AuctionError("not_active", "Start or resume the auction before re-auctioning a player.");
+  }
+  if (settings.currentPlayerId) {
+    throw new AuctionError(
+      "player_on_block",
+      "A player is already on the block — finalize them before bringing back another player.",
+    );
+  }
+
+  const snap = await get(dbRefs.player(playerId));
+  if (!snap.exists()) {
+    throw new AuctionError("player_not_found", `Player ${playerId} not found.`);
+  }
+
+  const player = toPlayer(playerId, snap.val());
+  if (player.status !== "unsold") {
+    throw new AuctionError(
+      "not_unsold",
+      `Only unsold players can be re-auctioned. ${player.name} is currently "${player.status}".`,
+    );
+  }
+
+  const now = Date.now();
+  const updates: Record<string, unknown> = {
+    [`players/${playerId}/status`]: "current",
+    [`players/${playerId}/updatedAt`]: now,
+    "settings/currentPlayerId": playerId,
+    "settings/updatedAt": now,
+  };
+
+  let effectiveBasePrice = player.basePrice;
+  if (
+    typeof startingBasePrice === "number" &&
+    Number.isFinite(startingBasePrice) &&
+    startingBasePrice > 0
+  ) {
+    effectiveBasePrice = Math.round(startingBasePrice);
+    updates[`players/${playerId}/basePrice`] = effectiveBasePrice;
+  }
+
+  await update(rootRef(), updates);
+  return {
+    ...player,
+    basePrice: effectiveBasePrice,
+    status: "current",
+    updatedAt: now,
+  };
+}

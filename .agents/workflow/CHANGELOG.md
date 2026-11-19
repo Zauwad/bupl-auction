@@ -4,6 +4,41 @@
 
 ### Added — 2026-11-19
 
+**Time:** 2026-11-19 16:10 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Unsold Player Re-Auction Flow with Base Price Customization and Live Broadcast Badges
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Introduced an on-demand re-auction feature allowing tournament administrators to bring unsold players back to the auction block at any time.
+- Provides an in-line "Unsold Players Pool" on the live operator console showing all passed players, original segments, and base prices.
+- When re-auctioning, administrators can adjust or discount starting base prices directly within a quick confirmation prompt if negotiated with clubs.
+- The live stage projector screen and mobile spectator stream automatically display a prominent "Re-Auction · 2nd Call" badge when a returning player is on the block.
+- Chronological auction integrity is maintained: previous unsold logs remain in the official timeline, and successful purchases are recorded as new sales while preserving original segment category stats.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/admin/live` and `https://bupl-auction.vercel.app/live`
+- **Where to See It:**
+  1. **Admin Live Console (`/admin/live`):** When between bids, scroll down to the new "Unsold Players Pool" section. Filter by current segment, other segments, or view all. Click "Re-Auction" next to any player to open the starting price adjustment dialog and confirm placement onto the live block.
+  2. **Stage Projector / Live Stream (`/live`):** When a re-auctioned player is on the block, look at the top right of the hero player card to see the glowing amber "Re-Auction · 2nd Call" badge, with status displaying "Re-Auction · On the block".
+
+**Technical Implementation (Tech Lead):**
+- Built `reauctionPlayer` in `src/lib/firebase/auction.ts` with precondition assertions (validates auction active status, ensures block is clear, verifies target player status is `"unsold"`) and atomically updates player status to `"current"`, adjusts `basePrice` if modified, and assigns `settings.currentPlayerId`.
+- Built modular `ReauctionDialog` and `ReauctionForm` in `src/app/admin/(dashboard)/live/reauction-dialog.tsx` implementing key-based mounting for React 19 compiler safety and zero cascading renders.
+- Integrated the "Unsold Players Pool" responsive panel and segment-exhausted notification banner into `src/app/admin/(dashboard)/live/live-auction.tsx`.
+- Updated `src/components/broadcast/broadcast-live.tsx` to detect previous unsold history (`history.some(h => h.playerId === currentPlayer.id && h.action === "unsold")`) and render the "Re-Auction · 2nd Call" indicator.
+- Deployed and verified on Vercel production: `https://bupl-auction.vercel.app`.
+
+**Files:**
+- `bupl-auction/src/lib/firebase/auction.ts`
+- `bupl-auction/src/app/admin/(dashboard)/live/reauction-dialog.tsx`
+- `bupl-auction/src/app/admin/(dashboard)/live/live-auction.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-live.tsx`
+
+**Impact:** route / UI / backend
+
+### Added — 2026-11-19
+
 **Time:** 2026-11-19 15:10 (UTC+6)
 **Author:** Antigravity agent
 **Issue:** Relevant Aesthetic Cricket Tournament Favicon and Touch Icons

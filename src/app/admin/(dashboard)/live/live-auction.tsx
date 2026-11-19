@@ -33,6 +33,7 @@ import {
   advanceToNextPlayer,
   completeCurrentSegment,
   summarizeTournament,
+  reauctionPlayer,
 } from "@/lib/firebase/auction";
 import { segmentDisplayName, SEGMENT_NAMES } from "@/lib/constants";
 import { recordSale, markUnsold, PurchaseError } from "@/lib/firebase/purchase";
@@ -50,6 +51,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SaleDialog, type SaleFormValues } from "./sale-dialog";
+import { ReauctionDialog } from "./reauction-dialog";
 import { SEGMENT_COUNT, TOTAL_PLAYERS, PLAYERS_PER_SEGMENT, segmentShortName } from "@/lib/constants";
 import { getFirebaseAuth } from "@/lib/firebase/config";
 import { cn } from "@/lib/utils";
@@ -69,7 +71,8 @@ type BusyAction =
   | "advance"
   | "completeSegment"
   | "unsold"
-  | "sold";
+  | "sold"
+  | "reauction";
 
 /** Live Auction — the operator console used during the physical auction. */
 export function LiveAuction() {
@@ -88,6 +91,9 @@ export function LiveAuction() {
   const [startOpen, setStartOpen] = useState(false);
   const [chosenSegment, setChosenSegment] = useState<number | null>(null);
   const [nextSegmentPickerOpen, setNextSegmentPickerOpen] = useState(false);
+  const [reauctionTarget, setReauctionTarget] = useState<Player | null>(null);
+  const [reauctionOpen, setReauctionOpen] = useState(false);
+  const [unsoldFilter, setUnsoldFilter] = useState<"all" | "current" | "others">("current");
 
   useEffect(() => {
     const onError = (error: Error) =>
@@ -130,6 +136,11 @@ export function LiveAuction() {
     ? confirmedOrder.indexOf(currentPlayer.id) + 1
     : null;
 
+  const isCurrentPlayerReauction = Boolean(
+    currentPlayer &&
+      history?.some((h) => h.playerId === currentPlayer.id && h.action === "unsold"),
+  );
+
   const segmentPlayers = useMemo(
     () => (players ?? []).filter((p) => p.segment === currentSegment),
     [players, currentSegment],
@@ -157,6 +168,24 @@ export function LiveAuction() {
     () => [...(clubs ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [clubs],
   );
+
+  const unsoldPlayers = useMemo(
+    () => (players ?? []).filter((p) => p.status === "unsold"),
+    [players],
+  );
+  const currentSegmentUnsold = useMemo(
+    () => unsoldPlayers.filter((p) => p.segment === currentSegment),
+    [unsoldPlayers, currentSegment],
+  );
+  const earlierSegmentsUnsold = useMemo(
+    () => unsoldPlayers.filter((p) => p.segment !== currentSegment),
+    [unsoldPlayers, currentSegment],
+  );
+  const filteredUnsoldPlayers = useMemo(() => {
+    if (unsoldFilter === "current") return currentSegmentUnsold;
+    if (unsoldFilter === "others") return earlierSegmentsUnsold;
+    return unsoldPlayers;
+  }, [unsoldFilter, currentSegmentUnsold, earlierSegmentsUnsold, unsoldPlayers]);
 
   // Client-derived start preconditions (same rules as startAuction)
   const confirmedOrders = (segments ?? []).filter((s) => s.isOrderConfirmed).length;
@@ -303,6 +332,24 @@ export function LiveAuction() {
       toast.success(
         `${currentPlayer.name} SOLD to ${club?.name ?? "club"} for ${formatPrice(values.price)}.`,
       );
+    });
+  }
+
+  async function handleReauction(startingBasePrice: number) {
+    if (!reauctionTarget) return;
+    await run("reauction", async () => {
+      try {
+        const player = await reauctionPlayer({
+          playerId: reauctionTarget.id,
+          startingBasePrice,
+          adminUid: getFirebaseAuth().currentUser?.uid ?? "unknown-admin",
+        });
+        toast.success(`${player.name} is on the auction block.`);
+        setReauctionOpen(false);
+        setReauctionTarget(null);
+      } catch (error) {
+        handleError(error, "Could not re-auction player.");
+      }
     });
   }
 
@@ -509,7 +556,13 @@ export function LiveAuction() {
               aria-label="Player on the block"
               className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.03] xl:col-span-7"
             >
-              <div className="absolute right-4 top-4">
+              <div className="absolute right-4 top-4 flex items-center gap-2">
+                {isCurrentPlayerReauction && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/50 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-300">
+                    <Gavel className="size-3" />
+                    Re-Auction
+                  </span>
+                )}
                 <PlayerStatusBadge status={currentPlayer?.status ?? "upcoming"} />
               </div>
               {currentPlayer ? (
@@ -572,15 +625,23 @@ export function LiveAuction() {
                       <CheckCircle2 className="size-14 text-emerald-500" aria-hidden />
                       <div>
                         <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-800 dark:text-zinc-100">
-                          {segmentDisplayName(currentSegment)} complete
+                          {segmentDisplayName(currentSegment)} regular round complete
                         </h2>
                         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                           {resolvedInSegment}/{segmentPlayers.length} players finalized.
                           {currentSegmentRecord?.isCompleted
                             ? " Choose the next segment when the room is ready."
-                            : " Mark it complete to pick the next segment."}
+                            : " Mark it complete to pick the next segment, or re-auction unsold players below."}
                         </p>
                       </div>
+                      {currentSegmentUnsold.length > 0 && (
+                        <div className="flex max-w-md items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-left text-xs font-medium text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
+                          <Gavel className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                          <span>
+                            <strong>{currentSegmentUnsold.length} unsold player{currentSegmentUnsold.length > 1 ? "s" : ""}</strong> in this segment. You can re-auction them below before completing the segment.
+                          </span>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -740,6 +801,131 @@ export function LiveAuction() {
               </div>
             </div>
           </div>
+
+          {/* ---------- Unsold Players Pool ---------- */}
+          {unsoldPlayers.length > 0 && (
+            <section
+              aria-label="Unsold Players Pool"
+              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.03]"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                    <Gavel className="size-4.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display text-lg font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-50">
+                        Unsold Players Pool
+                      </h3>
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 font-mono text-xs font-bold text-red-700 dark:bg-red-500/20 dark:text-red-300">
+                        {unsoldPlayers.length}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Re-introduce any unsold player to the live block with optional starting price adjustments.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-1 dark:border-white/10 dark:bg-zinc-900/50">
+                  <button
+                    type="button"
+                    onClick={() => setUnsoldFilter("current")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-bold transition",
+                      unsoldFilter === "current"
+                        ? "bg-white text-zinc-900 shadow-xs dark:bg-zinc-800 dark:text-zinc-100"
+                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    {segmentShortName(currentSegment)} ({currentSegmentUnsold.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUnsoldFilter("others")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-bold transition",
+                      unsoldFilter === "others"
+                        ? "bg-white text-zinc-900 shadow-xs dark:bg-zinc-800 dark:text-zinc-100"
+                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    Other Segments ({earlierSegmentsUnsold.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUnsoldFilter("all")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-bold transition",
+                      unsoldFilter === "all"
+                        ? "bg-white text-zinc-900 shadow-xs dark:bg-zinc-800 dark:text-zinc-100"
+                        : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    All ({unsoldPlayers.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Cards Grid */}
+              {filteredUnsoldPlayers.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-dashed border-zinc-200 py-8 text-center text-xs text-zinc-400 dark:border-white/10">
+                  No unsold players in this filter view.
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {filteredUnsoldPlayers.map((player) => (
+                    <div
+                      key={player.id}
+                      className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-zinc-50/60 p-3.5 transition hover:border-amber-400/50 hover:bg-zinc-50 dark:border-white/10 dark:bg-white/[0.02] dark:hover:bg-white/[0.04]"
+                    >
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <PlayerPhoto photoUrl={player.photoUrl} name={player.name} size={42} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-100" title={player.name}>
+                              {player.name}
+                            </p>
+                            <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                              {player.category ?? "Player"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2.5 flex items-center justify-between border-t border-zinc-200/70 pt-2 text-[11px] dark:border-white/5">
+                          <span className="font-mono text-zinc-500">
+                            {segmentShortName(player.segment)}
+                          </span>
+                          <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                            {formatPrice(player.basePrice)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={Boolean(currentPlayer) || busy !== null}
+                        onClick={() => {
+                          setReauctionTarget(player);
+                          setReauctionOpen(true);
+                        }}
+                        title={
+                          currentPlayer
+                            ? "Finalize the current player on the block first"
+                            : "Re-introduce this player to the auction block"
+                        }
+                        className="mt-3 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 text-xs font-bold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-300 dark:hover:bg-amber-400/20"
+                      >
+                        <Gavel className="size-3.5" />
+                        Re-Auction
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
 
@@ -750,6 +936,14 @@ export function LiveAuction() {
         player={currentPlayer}
         clubs={clubsSorted}
         onSubmit={handleRecordSale}
+      />
+
+      <ReauctionDialog
+        open={reauctionOpen}
+        onOpenChange={setReauctionOpen}
+        player={reauctionTarget}
+        loading={busy === "reauction"}
+        onConfirm={handleReauction}
       />
 
       <ConfirmDialog

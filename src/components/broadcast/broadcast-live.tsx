@@ -140,6 +140,11 @@ export function BroadcastLive() {
     ? order.indexOf(currentPlayer.id) + 1
     : null;
 
+  const isReauction = Boolean(
+    currentPlayer &&
+      history?.some((h) => h.playerId === currentPlayer.id && h.action === "unsold"),
+  );
+
   /* ---------- Loading ---------- */
   if (loading) {
     return (
@@ -298,10 +303,16 @@ export function BroadcastLive() {
                     #{currentPosition}/{PLAYERS_PER_SEGMENT}
                   </span>
                 )}
+                {isReauction && (
+                  <span className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-amber-400/80 bg-black/70 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-300 shadow-[0_0_16px_rgba(251,191,36,0.45)] backdrop-blur">
+                    <Gavel className="size-3.5 text-amber-400" />
+                    Re-Auction · 2nd Call
+                  </span>
+                )}
                 <div className="absolute inset-x-0 bottom-0 p-5">
                   <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400">
                     <Gavel className="size-3.5" aria-hidden />
-                    On the block
+                    {isReauction ? "Re-Auction · On the block" : "On the block"}
                   </p>
                   <h1 className="font-display mt-1 text-4xl font-bold uppercase leading-[0.95] text-zinc-50 xl:text-5xl">
                     {currentPlayer.name}

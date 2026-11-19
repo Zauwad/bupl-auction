@@ -257,7 +257,7 @@ export function ClubsManager() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[580px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[34%]">Club</TableHead>

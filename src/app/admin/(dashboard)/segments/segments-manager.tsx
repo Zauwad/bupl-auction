@@ -259,7 +259,7 @@ export function SegmentsManager() {
       )}
 
       {/* Segment cards */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         {loading
           ? Array.from({ length: SEGMENT_COUNT }).map((_, i) => (
               <div key={i} className="h-28 animate-pulse rounded-xl bg-zinc-200 dark:bg-white/5" />

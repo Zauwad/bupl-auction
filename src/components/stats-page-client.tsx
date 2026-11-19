@@ -9,7 +9,14 @@ import {
   TrendingUp,
   Shield,
 } from "lucide-react";
-import { subscribeClubs, subscribePlayers } from "@/lib/firebase";
+import {
+  subscribeClubs as subscribeFirebaseClubs,
+  subscribePlayers as subscribeFirebasePlayers,
+} from "@/lib/firebase";
+import {
+  subscribeSpectatorClubs,
+  subscribeSpectatorPlayers,
+} from "@/lib/spectator";
 import { computeAuctionStats, salesBySegment } from "@/lib/stats";
 import { formatPrice } from "@/lib/format";
 import { PlayerPhoto } from "@/components/common/player-photo";
@@ -30,9 +37,16 @@ export function StatsPageClient() {
   const [clubs, setClubs] = useState<Club[] | undefined>(undefined);
 
   useEffect(() => {
+    const isRealtime =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("realtime") === "true";
+
+    const subPlayers = isRealtime ? subscribeFirebasePlayers : subscribeSpectatorPlayers;
+    const subClubs = isRealtime ? subscribeFirebaseClubs : subscribeSpectatorClubs;
+
     const unsubs = [
-      subscribePlayers(setPlayers, () => undefined),
-      subscribeClubs(setClubs, () => undefined),
+      subPlayers(setPlayers, () => undefined),
+      subClubs(setClubs, () => undefined),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
@@ -50,7 +64,7 @@ export function StatsPageClient() {
   const maxSpent = stats.clubStats[0]?.spent ?? 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
       <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-5">
         <div>
           <h1 className="flex items-center gap-3 text-2xl font-black uppercase tracking-tight text-zinc-50">
@@ -85,28 +99,28 @@ export function StatsPageClient() {
       ) : (
         <>
           {/* Headline KPIs */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
             {[
               { icon: BadgeDollarSign, label: "Total sales value", value: formatPrice(stats.totalSalesValue), tone: "text-amber-400" },
               { icon: BadgeCheck, label: "Players sold", value: String(stats.sold), tone: "text-emerald-400" },
               { icon: Gavel, label: "Unsold", value: String(stats.unsold), tone: "text-red-400" },
               { icon: TrendingUp, label: "Average sale", value: formatPrice(stats.averageSale), tone: "text-sky-400" },
             ].map(({ icon: Icon, label, value, tone }) => (
-              <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+              <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5 sm:p-5">
                 <Icon className="size-4 text-zinc-500" aria-hidden />
-                <p className={cn("mt-2 font-mono text-lg font-black tabular-nums sm:text-2xl", tone)} title={value}>
+                <p className={cn("mt-1.5 font-mono text-base font-black tabular-nums sm:mt-2 sm:text-2xl", tone)} title={value}>
                   {value}
                 </p>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                <p className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.15em] text-zinc-500 sm:text-[9px] sm:tracking-[0.2em]">
                   {label}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-5 w-full min-w-0">
             {/* Most expensive buys */}
-            <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 lg:col-span-2">
+            <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5 lg:col-span-2 min-w-0 max-w-full overflow-hidden">
               <h2 className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">
                 Most expensive buys
               </h2>
@@ -114,17 +128,17 @@ export function StatsPageClient() {
                 {stats.mostExpensive.map(({ player, clubName }, index) => {
                   const pct = maxPrice > 0 ? ((player.finalPrice ?? 0) / maxPrice) * 100 : 0;
                   return (
-                    <li key={player.id} className="flex items-center gap-3">
-                      <span className="w-6 shrink-0 text-center font-mono text-xs font-black text-zinc-600">
+                    <li key={player.id} className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <span className="w-5 sm:w-6 shrink-0 text-center font-mono text-xs font-black text-zinc-600">
                         {index + 1}
                       </span>
-                      <PlayerPhoto photoUrl={player.photoUrl} name={player.name} size={40} />
+                      <PlayerPhoto photoUrl={player.photoUrl} name={player.name} size={36} className="shrink-0 sm:size-[40px]" />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <p className="truncate text-sm font-bold text-zinc-100" title={player.name}>
+                        <div className="flex items-baseline justify-between gap-1.5 sm:gap-2 min-w-0">
+                          <p className="truncate text-xs sm:text-sm font-bold text-zinc-100" title={player.name}>
                             {player.name}
                           </p>
-                          <p className="shrink-0 font-mono text-sm font-black tabular-nums text-amber-400">
+                          <p className="shrink-0 font-mono text-xs sm:text-sm font-black tabular-nums text-amber-400">
                             {formatPrice(player.finalPrice)}
                           </p>
                         </div>
@@ -144,12 +158,12 @@ export function StatsPageClient() {
             </section>
 
             {/* Club ledger */}
-            <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 lg:col-span-3">
+            <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5 lg:col-span-3 min-w-0 max-w-full overflow-hidden">
               <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.3em] text-zinc-400">
                 <Shield className="size-4" aria-hidden /> Club ledger
               </h2>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[560px] text-sm">
+              <div className="mt-4 w-full min-w-0 overflow-x-auto">
+                <table className="w-full min-w-[440px] sm:min-w-[520px] text-sm">
                   <thead>
                     <tr className="text-left text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
                       <th className="pb-2 pr-3">Club</th>
@@ -208,20 +222,20 @@ export function StatsPageClient() {
           </div>
 
           {/* Sales by segment */}
-          <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+          <section className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
             <h2 className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">
               Sales by segment
             </h2>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
               {bySegment.map((s) => (
                 <div key={s.segment} className="rounded-xl border border-white/[0.08] bg-zinc-950/50 p-3 text-center">
                   <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-500">
                     Segment {s.segment}
                   </p>
-                  <p className="mt-1 font-mono text-sm font-black text-zinc-200">
+                  <p className="mt-1 font-mono text-xs font-black text-zinc-200 sm:text-sm">
                     {s.sold} sold · {s.unsold} unsold
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] font-semibold tabular-nums text-amber-400/90">
+                  <p className="mt-0.5 font-mono text-[10px] font-semibold tabular-nums text-amber-400/90 sm:text-[11px]">
                     {formatPrice(s.salesValue)}
                   </p>
                 </div>

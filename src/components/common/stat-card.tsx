@@ -36,19 +36,21 @@ export function StatCard({ label, value, subtext, icon: Icon, tone = "default" }
   return (
     <div
       className={cn(
-        "rounded-xl border p-5 shadow-sm transition-colors",
+        "rounded-xl border p-3.5 sm:p-5 shadow-sm transition-colors",
         TONE_STYLES[tone],
       )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 sm:text-[11px] sm:tracking-[0.18em] dark:text-zinc-400">
           {label}
         </p>
-        <Icon className={cn("size-5 shrink-0", ICON_TONE[tone])} aria-hidden />
+        <Icon className={cn("size-4 sm:size-5 shrink-0", ICON_TONE[tone])} aria-hidden />
       </div>
-      <p className="mt-3 text-3xl font-black tabular-nums tracking-tight">{value}</p>
+      <p className="mt-2 text-xl font-black tabular-nums tracking-tight truncate sm:mt-3 sm:text-2xl lg:text-3xl" title={String(value)}>
+        {value}
+      </p>
       {subtext && (
-        <p className="mt-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 truncate text-[11px] font-medium text-zinc-500 sm:mt-1.5 sm:text-xs dark:text-zinc-400" title={subtext}>
           {subtext}
         </p>
       )}

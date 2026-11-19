@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { LogOut, Sun, Moon } from "lucide-react";
@@ -30,7 +31,7 @@ export function AdminShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="flex min-h-screen overflow-x-clip bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <div className="sticky top-0 h-screen">
@@ -63,26 +64,26 @@ export function AdminShell({
             </div>
           </div>
           <nav
-            className="flex gap-1 overflow-x-auto px-2 pb-2"
+            className="flex gap-1.5 overflow-x-auto px-3 pb-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Admin sections"
           >
             {ADMIN_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
               const active = pathname === href;
               return (
-                <a
+                <Link
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide",
+                    "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors",
                     active
-                      ? "bg-amber-400 text-zinc-950"
+                      ? "bg-amber-400 text-zinc-950 font-bold"
                       : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-white/5",
                   )}
                 >
                   <Icon className="size-3.5" aria-hidden />
                   {label.replace(" Management", "")}
-                </a>
+                </Link>
               );
             })}
           </nav>

@@ -60,25 +60,25 @@ export default function HomePage() {
           aria-hidden
           className="pointer-events-none absolute -right-10 top-1/2 hidden size-[320px] -translate-y-1/2 rounded-full border border-amber-400/20 lg:block"
         />
-        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-16 sm:px-6 sm:py-24 lg:py-28">
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-12 sm:gap-8 sm:px-6 sm:py-20 lg:py-28">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-amber-400">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-amber-400 sm:text-[11px]">
               <span className="size-1.5 animate-pulse rounded-full bg-amber-400" />
               Official Auction
             </span>
           </div>
-          <h1 className="max-w-4xl text-5xl font-black uppercase leading-[0.95] tracking-tight text-zinc-50 sm:text-7xl">
+          <h1 className="max-w-4xl text-3xl font-black uppercase leading-[0.95] tracking-tight text-zinc-50 xs:text-4xl sm:text-6xl md:text-7xl">
             BUPL <span className="text-amber-400">Cricket</span> Auction
           </h1>
-          <p className="max-w-2xl text-lg text-zinc-400">
+          <p className="max-w-2xl text-base text-zinc-400 sm:text-lg">
             The live, official display for the university cricket player auction —
             five segments, sixty players, and a handful of clubs fighting for
             their dream squad. Every result, as it happens.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/live"
-              className="inline-flex h-12 items-center gap-2 rounded-lg bg-amber-400 px-6 text-sm font-bold uppercase tracking-wider text-zinc-950 transition-colors hover:bg-amber-300"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-6 text-sm font-bold uppercase tracking-wider text-zinc-950 transition-colors hover:bg-amber-300 sm:w-auto"
             >
               <Radio className="size-5" aria-hidden />
               Watch the auction
@@ -86,7 +86,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/squads"
-              className="inline-flex h-12 items-center gap-2 rounded-lg border border-white/15 px-6 text-sm font-semibold uppercase tracking-wider text-zinc-200 transition-colors hover:border-amber-400/50 hover:text-amber-400"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-white/15 px-6 text-sm font-semibold uppercase tracking-wider text-zinc-200 transition-colors hover:border-amber-400/50 hover:text-amber-400 sm:w-auto"
             >
               View club squads
             </Link>
@@ -96,7 +96,7 @@ export default function HomePage() {
 
       {/* Format facts */}
       <section className="border-y border-white/10 bg-white/[0.02]">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-2 divide-x divide-white/10 sm:grid-cols-4">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-2 divide-y divide-white/10 sm:grid-cols-4 sm:divide-x sm:divide-y-0">
           {FORMAT_FACTS.map(({ icon: Icon, value, label }) => (
             <div
               key={label}

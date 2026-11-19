@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# lavish artifacts
+.lavish
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

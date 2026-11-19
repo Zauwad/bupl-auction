@@ -3,16 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
-  subscribeSettings,
-  subscribeClubs,
-  subscribePlayers,
-  subscribeSegments,
-  subscribeHistory,
+  subscribeSettings as subscribeFirebaseSettings,
+  subscribeClubs as subscribeFirebaseClubs,
+  subscribePlayers as subscribeFirebasePlayers,
+  subscribeSegments as subscribeFirebaseSegments,
+  subscribeHistory as subscribeFirebaseHistory,
 } from "@/lib/firebase";
+import {
+  subscribeSpectatorSettings,
+  subscribeSpectatorClubs,
+  subscribeSpectatorPlayers,
+  subscribeSpectatorSegments,
+  subscribeSpectatorHistory,
+} from "@/lib/spectator";
 import { ClubPurchasesBoard } from "./club-purchases-board";
 import { formatPrice } from "@/lib/format";
 import { PlayerPhoto } from "@/components/common/player-photo";
-import { PLAYERS_PER_SEGMENT, SEGMENT_COUNT, segmentDisplayName } from "@/lib/constants";
+import { PLAYERS_PER_SEGMENT, segmentDisplayName } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type {
   AuctionHistoryRecord,
@@ -63,13 +70,23 @@ export function BroadcastLive() {
   const [history, setHistory] = useState<AuctionHistoryRecord[] | undefined>(undefined);
 
   useEffect(() => {
-    const noop = () => undefined; // read-only view
+    const isRealtime =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("realtime") === "true";
+
+    const subSettings = isRealtime ? subscribeFirebaseSettings : subscribeSpectatorSettings;
+    const subClubs = isRealtime ? subscribeFirebaseClubs : subscribeSpectatorClubs;
+    const subPlayers = isRealtime ? subscribeFirebasePlayers : subscribeSpectatorPlayers;
+    const subSegments = isRealtime ? subscribeFirebaseSegments : subscribeSpectatorSegments;
+    const subHistory = isRealtime ? subscribeFirebaseHistory : subscribeSpectatorHistory;
+
+    const noop = () => undefined;
     const unsubs = [
-      subscribeSettings(setSettings, noop),
-      subscribeClubs(setClubs, noop),
-      subscribePlayers(setPlayers, noop),
-      subscribeSegments(setSegments, noop),
-      subscribeHistory(setHistory, noop),
+      subSettings(setSettings, noop),
+      subClubs(setClubs, noop),
+      subPlayers(setPlayers, noop),
+      subSegments(setSegments, noop),
+      subHistory(setHistory, noop),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
@@ -113,11 +130,6 @@ export function BroadcastLive() {
     return null;
   }, [order, playersById]);
 
-  const segmentPlayers = useMemo(
-    () => (players ?? []).filter((p) => p.segment === currentSegment),
-    [players, currentSegment],
-  );
-
   const tournamentSold = (players ?? []).filter((p) => p.status === "sold").length;
   const tournamentUnsold = (players ?? []).filter((p) => p.status === "unsold").length;
   const totalSalesValue = (players ?? [])
@@ -142,56 +154,56 @@ export function BroadcastLive() {
 
   return (
     <>
-      <div className="flex h-screen min-h-0 flex-col">
+      <div className="flex min-h-screen flex-col xl:h-screen xl:min-h-0">
         {/* ════════ TOP BAR ════════ */}
       <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-red-900/40 bg-gradient-to-r from-[#2a1418] via-zinc-950 to-[#2a1418] px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <Image
             src="/images/logos/cbu_logo.webp"
             alt="Cricket BRAC University"
             width={56}
             height={56}
-            className="size-12 shrink-0 object-contain drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]"
+            className="size-10 shrink-0 object-contain drop-shadow-[0_0_10px_rgba(56,189,248,0.35)] sm:size-12"
           />
           <div className="min-w-0 leading-tight">
-            <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-sky-400">
+            <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-sky-400 sm:text-[9px] sm:tracking-[0.4em]">
               Cricket BRAC University
             </p>
-            <h1 className="font-display text-2xl font-bold uppercase leading-none tracking-wide text-zinc-50 sm:text-3xl">
+            <h1 className="font-display text-xl font-bold uppercase leading-none tracking-wide text-zinc-50 sm:text-2xl lg:text-3xl">
               Player <span className="text-amber-400">Auction</span>
             </h1>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+        <div className="flex shrink-0 items-center gap-2.5 sm:gap-4">
           {status === "live" ? (
             <span className="flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/10 py-1 pl-2.5 pr-3.5">
               <span className="relative flex size-2.5">
                 <span className="absolute inline-flex h-full w-full animate-live-ping rounded-full bg-red-500" />
                 <span className="relative inline-flex size-2.5 rounded-full bg-red-500" />
               </span>
-              <span className="font-display text-base font-bold uppercase tracking-[0.25em] text-red-400">
+              <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-red-400 sm:text-base sm:tracking-[0.25em]">
                 Live
               </span>
             </span>
           ) : status === "paused" ? (
-            <span className="flex items-center gap-2 rounded-full border border-amber-400/50 bg-amber-400/10 px-3 py-1">
+            <span className="flex items-center gap-2 rounded-full border border-amber-400/50 bg-amber-400/10 px-2.5 py-1 sm:px-3">
               <span className="size-2.5 animate-pulse rounded-full bg-amber-400" />
-              <span className="font-display text-base font-bold uppercase tracking-[0.25em] text-amber-400">
+              <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-amber-400 sm:text-base sm:tracking-[0.25em]">
                 Paused
               </span>
             </span>
           ) : status === "completed" ? (
-            <span className="flex items-center gap-2 rounded-full border border-sky-400/50 bg-sky-400/10 px-4 py-1">
+            <span className="flex items-center gap-2 rounded-full border border-sky-400/50 bg-sky-400/10 px-3 py-1 sm:px-4">
               <span className="size-2.5 rounded-full bg-sky-400" />
-              <span className="font-display text-base font-bold uppercase tracking-[0.25em] text-sky-400">
+              <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-sky-400 sm:text-base sm:tracking-[0.25em]">
                 Final
               </span>
             </span>
           ) : (
-            <span className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800/60 px-3 py-1">
+            <span className="flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-800/60 px-2.5 py-1 sm:px-3">
               <span className="size-2.5 rounded-full bg-zinc-500" />
-              <span className="font-display text-base font-bold uppercase tracking-[0.25em] text-zinc-400">
+              <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 sm:text-base sm:tracking-[0.25em]">
                 Soon
               </span>
             </span>
@@ -206,12 +218,12 @@ export function BroadcastLive() {
         </div>
       </header>
 
-      {/* ════════ MAIN — 3 columns ════════ */}
-      <main className="grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-3 overflow-y-auto p-3 xl:overflow-hidden">
-        {/* ── LEFT (3/12): PLAYER CARD + AD SLOT ─────────────────────── */}
-        <section className="col-span-12 flex h-full min-h-0 flex-col gap-3 sm:col-span-4 xl:col-span-4">
-          {/* Player card — ~3/4 of left column */}
-          <div className="relative min-h-0 flex-[3] overflow-hidden rounded-2xl border border-red-900/50 bg-gradient-to-b from-[#3a1f22] via-[#2b1518] to-[#1d0e11]">
+      {/* ════════ MAIN — Responsive Layout ════════ */}
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-12 xl:overflow-hidden">
+        {/* ── LEFT: PLAYER CARD (Prominent on mobile, 5 cols on lg, 4 cols on xl) ─────────────────────── */}
+        <section className="col-span-1 flex min-h-[440px] flex-col gap-3 lg:col-span-5 xl:col-span-4 xl:h-full xl:min-h-0">
+          {/* Player card */}
+          <div className="relative flex flex-1 min-h-[420px] flex-col overflow-hidden rounded-2xl border border-red-900/50 bg-gradient-to-b from-[#3a1f22] via-[#2b1518] to-[#1d0e11] xl:min-h-0">
             {status === "completed" ? (
               <div className="flex h-full flex-col items-center justify-center gap-5 p-6 text-center">
                 <Trophy
@@ -359,17 +371,17 @@ export function BroadcastLive() {
           </div>
         </section>
 
-        {/* ── CENTER (6/12): SEGMENT GRID + STATS BAR ────────────────── */}
-        <section className="col-span-12 flex h-full min-h-0 flex-col gap-3 sm:col-span-8 xl:col-span-8">
+        {/* ── RIGHT: SEGMENT GRID + CARDS ────────────────── */}
+        <section className="col-span-1 flex min-h-0 flex-col gap-3 lg:col-span-7 xl:col-span-8 xl:h-full">
           {/* Segment header — name only */}
-          <div className="flex h-16 shrink-0 items-center rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-900/60 px-6">
-            <h2 className="font-display text-3xl font-bold uppercase leading-none tracking-wide text-amber-400 xl:text-5xl">
+          <div className="flex h-14 shrink-0 items-center rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-900/60 px-4 sm:h-16 sm:px-6">
+            <h2 className="font-display text-2xl font-bold uppercase leading-none tracking-wide text-amber-400 sm:text-3xl xl:text-5xl">
               {segmentRecord?.name ?? segmentDisplayName(currentSegment)}
             </h2>
           </div>
 
-          {/* The 12 mystery cards, in auction order */}
-          <div className="grid min-h-0 flex-1 grid-cols-5 grid-rows-2 gap-3">
+          {/* The mystery / revealed cards in responsive grid */}
+          <div className="grid flex-1 gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-5 xl:grid-rows-2 auto-rows-[160px] sm:auto-rows-[180px] xl:auto-rows-auto xl:min-h-0">
             {order.map((playerId, index) => {
               const player = playersById.get(playerId);
               if (!player) {

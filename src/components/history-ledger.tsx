@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { History } from "lucide-react";
-import { subscribeHistory, subscribeClubs, subscribePlayers } from "@/lib/firebase";
+import {
+  subscribeHistory as subscribeFirebaseHistory,
+  subscribeClubs as subscribeFirebaseClubs,
+  subscribePlayers as subscribeFirebasePlayers,
+} from "@/lib/firebase";
+import {
+  subscribeSpectatorHistory,
+  subscribeSpectatorClubs,
+  subscribeSpectatorPlayers,
+} from "@/lib/spectator";
 import { formatPrice, formatTimestamp } from "@/lib/format";
 import { ClubLogo } from "@/components/common/club-logo";
 import { PlayerPhoto } from "@/components/common/player-photo";
@@ -21,11 +30,19 @@ export function HistoryLedger() {
   const [clubs, setClubs] = useState<Club[] | undefined>(undefined);
 
   useEffect(() => {
+    const isRealtime =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("realtime") === "true";
+
+    const subHistory = isRealtime ? subscribeFirebaseHistory : subscribeSpectatorHistory;
+    const subPlayers = isRealtime ? subscribeFirebasePlayers : subscribeSpectatorPlayers;
+    const subClubs = isRealtime ? subscribeFirebaseClubs : subscribeSpectatorClubs;
+
     const noop = () => undefined;
     const unsubs = [
-      subscribeHistory(setHistory, noop),
-      subscribePlayers(setPlayers, noop),
-      subscribeClubs(setClubs, noop),
+      subHistory(setHistory, noop),
+      subPlayers(setPlayers, noop),
+      subClubs(setClubs, noop),
     ];
     return () => unsubs.forEach((u) => u());
   }, []);
@@ -60,31 +77,31 @@ export function HistoryLedger() {
   }
 
   return (
-    <ol className="divide-y divide-zinc-100 dark:divide-white/[0.06]">
+    <ol className="w-full min-w-0 divide-y divide-zinc-100 dark:divide-white/[0.06]">
       {(history ?? []).map((record, index) => {
         const club = record.clubId ? clubsById.get(record.clubId) : undefined;
         const isSold = record.action === "sold";
         return (
           <li
             key={record.id}
-            className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-zinc-50 sm:px-6 dark:hover:bg-white/[0.03]"
+            className="flex min-w-0 items-center gap-2 px-3 py-2.5 transition-colors hover:bg-zinc-50 sm:gap-4 sm:px-6 sm:py-3 dark:hover:bg-white/[0.03]"
           >
-            <span className="w-8 shrink-0 text-center font-mono text-xs font-bold text-zinc-400 dark:text-zinc-600">
+            <span className="w-5 shrink-0 text-center font-mono text-[11px] font-bold text-zinc-400 sm:w-8 sm:text-xs dark:text-zinc-600">
               {(history?.length ?? 0) - index}
             </span>
-            <PlayerPhoto photoUrl={photoById.get(record.playerId)} name={record.playerName} size={44} />
+            <PlayerPhoto photoUrl={photoById.get(record.playerId)} name={record.playerName} size={36} className="shrink-0 sm:size-[44px]" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-zinc-800 dark:text-zinc-100">
+              <p className="truncate text-xs font-bold text-zinc-800 sm:text-sm dark:text-zinc-100" title={record.playerName}>
                 {record.playerName}
               </p>
-              <p className="text-[11px] text-zinc-500">
+              <p className="truncate text-[10px] text-zinc-500 sm:text-[11px]">
                 Segment {record.segment} · {formatTimestamp(record.timestamp)}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-2.5 sm:gap-4">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-4">
               {isSold && club && (
-                <div className="flex items-center gap-2">
-                  <ClubLogo logoUrl={club.logoUrl} name={club.name} abbreviation={club.abbreviation} size={30} />
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <ClubLogo logoUrl={club.logoUrl} name={club.name} abbreviation={club.abbreviation} size={24} className="sm:size-[30px]" />
                   <span className="hidden max-w-28 truncate text-xs font-semibold text-zinc-600 dark:text-zinc-300 md:inline">
                     {club.name}
                   </span>
@@ -92,7 +109,7 @@ export function HistoryLedger() {
               )}
               <span
                 className={cn(
-                  "w-24 text-right font-display text-xl font-semibold tabular-nums leading-none",
+                  "text-right font-display text-xs font-semibold tabular-nums leading-none sm:w-24 sm:text-xl",
                   isSold ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400",
                 )}
               >

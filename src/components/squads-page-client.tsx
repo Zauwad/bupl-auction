@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Shield, ArrowRight, Wallet, Users } from "lucide-react";
-import { subscribeClubs } from "@/lib/firebase";
+import { subscribeClubs as subscribeFirebaseClubs } from "@/lib/firebase";
+import { subscribeSpectatorClubs } from "@/lib/spectator";
 import { formatPrice } from "@/lib/format";
 import { ClubLogo } from "@/components/common/club-logo";
 import { squadIds } from "@/types";
@@ -20,7 +21,12 @@ export function SquadsPageClient() {
   const [clubs, setClubs] = useState<Club[] | undefined>(undefined);
 
   useEffect(() => {
-    return subscribeClubs(setClubs, () => undefined);
+    const isRealtime =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("realtime") === "true";
+
+    const subClubs = isRealtime ? subscribeFirebaseClubs : subscribeSpectatorClubs;
+    return subClubs(setClubs, () => undefined);
   }, []);
 
   const loading = clubs === undefined;
@@ -34,39 +40,39 @@ export function SquadsPageClient() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
-      <div className="flex items-end justify-between gap-4 border-b border-white/10 pb-5">
+    <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-3 text-2xl font-black uppercase tracking-tight text-zinc-50">
-            <Shield className="size-6 text-amber-400" aria-hidden />
+          <h1 className="flex items-center gap-2.5 text-xl font-black uppercase tracking-tight text-zinc-50 sm:text-2xl">
+            <Shield className="size-5 text-amber-400 sm:size-6" aria-hidden />
             Club Squads
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-500 sm:text-sm">
             Every franchise, its budget and its haul — live from the auction room.
           </p>
         </div>
         {!loading && (clubs?.length ?? 0) > 0 && (
-          <div className="hidden items-center gap-6 sm:flex">
-            <div className="text-right">
-              <p className="flex items-center justify-end gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                <Wallet className="size-3.5" aria-hidden /> Combined budget
+          <div className="flex w-full items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] p-2.5 sm:w-auto sm:self-auto sm:border-0 sm:bg-transparent sm:p-0 sm:gap-6">
+            <div className="text-left sm:text-right">
+              <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-zinc-500 sm:justify-end sm:text-[10px]">
+                <Wallet className="size-3" aria-hidden /> Combined budget
               </p>
-              <p className="font-mono text-sm font-bold text-zinc-200">
+              <p className="font-mono text-xs font-bold text-zinc-200 sm:text-sm">
                 {formatPrice(totals.remaining)} <span className="text-zinc-600">/ {formatPrice(totals.initial)}</span>
               </p>
             </div>
-            <div className="text-right">
-              <p className="flex items-center justify-end gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                <Users className="size-3.5" aria-hidden /> Players bought
+            <div className="border-l border-white/10 pl-4 text-left sm:border-0 sm:pl-0 sm:text-right">
+              <p className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-zinc-500 sm:justify-end sm:text-[10px]">
+                <Users className="size-3" aria-hidden /> Players bought
               </p>
-              <p className="font-mono text-sm font-bold text-zinc-200">{totals.players}</p>
+              <p className="font-mono text-xs font-bold text-zinc-200 sm:text-sm">{totals.players}</p>
             </div>
           </div>
         )}
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-44 animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.03]" />
           ))}
@@ -77,7 +83,7 @@ export function SquadsPageClient() {
           <p className="font-semibold text-zinc-400">No clubs registered yet.</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
           {(clubs ?? []).map((club) => {
             const spent = club.initialBudget - club.remainingBudget;
             const spentPct = club.initialBudget > 0
@@ -89,27 +95,30 @@ export function SquadsPageClient() {
                 key={club.id}
                 href={`/squads/${club.id}`}
                 style={{ borderLeft: `3px solid ${accent}` }}
-                className="group flex flex-col rounded-xl border border-white/[0.08] bg-white/[0.03] p-5 transition-all hover:border-amber-400/40 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="group flex flex-col rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5 transition-all hover:border-amber-400/40 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-w-0 max-w-full overflow-hidden"
               >
-                <div className="flex items-center gap-4">
-                  <ClubLogo logoUrl={club.logoUrl} name={club.name} abbreviation={club.abbreviation} size={72} className="transition-transform group-hover:scale-105" />
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-black uppercase leading-tight text-zinc-100" title={club.name}>
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="shrink-0">
+                    <ClubLogo logoUrl={club.logoUrl} name={club.name} abbreviation={club.abbreviation} size={56} className="transition-transform group-hover:scale-105 sm:hidden" />
+                    <ClubLogo logoUrl={club.logoUrl} name={club.name} abbreviation={club.abbreviation} size={72} className="hidden transition-transform group-hover:scale-105 sm:block" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-base font-black uppercase leading-tight text-zinc-100 sm:text-lg" title={club.name}>
                       {club.name}
                     </h2>
-                    <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-500">
+                    <p className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-widest text-zinc-500 sm:text-[11px]">
                       {squadIds(club).length}{" "}
                       {squadIds(club).length === 1 ? "player" : "players"} · budget {formatPrice(club.initialBudget)}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-end justify-between gap-3">
+                <div className="mt-4 flex flex-wrap items-baseline justify-between gap-1">
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-500">
                       Remaining
                     </p>
-                    <p className="font-mono text-2xl font-black tabular-nums text-emerald-400">
+                    <p className="font-mono text-xl font-black tabular-nums text-emerald-400 sm:text-2xl">
                       {formatPrice(club.remainingBudget)}
                     </p>
                   </div>

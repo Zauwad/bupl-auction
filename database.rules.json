@@ -1,0 +1,98 @@
+{
+  "rules": {
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      },
+      ".write": false
+    },
+
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists() && newData.exists()",
+      ".validate": "newData.hasChildren(['tournamentName', 'totalSegments', 'currentSegment', 'auctionStatus']) && newData.child('tournamentName').isString() && newData.child('tournamentName').val().length > 0 && newData.child('tournamentName').val().length <= 120 && newData.child('totalSegments').isNumber() && newData.child('totalSegments').val() >= 1 && newData.child('totalSegments').val() <= 10 && newData.child('currentSegment').isNumber() && newData.child('currentSegment').val() >= 1 && newData.child('currentSegment').val() <= newData.child('totalSegments').val() && (newData.child('auctionStatus').val() === 'not_started' || newData.child('auctionStatus').val() === 'live' || newData.child('auctionStatus').val() === 'paused' || newData.child('auctionStatus').val() === 'completed') && newData.child('updatedAt').isNumber()"
+    },
+
+    "clubs": {
+      ".read": true,
+      "$clubId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (newData.exists() || (root.child('settings').child('auctionStatus').val() === 'not_started' && data.child('totalPlayersPurchased').val() === 0))",
+        ".validate": "newData.hasChildren(['name', 'initialBudget', 'remainingBudget', 'totalPlayersPurchased', 'createdAt', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length >= 2 && newData.child('name').val().length <= 80 && newData.child('initialBudget').isNumber() && newData.child('initialBudget').val() >= 0 && newData.child('initialBudget').val() <= 100000000 && newData.child('remainingBudget').isNumber() && newData.child('remainingBudget').val() >= 0 && newData.child('remainingBudget').val() <= newData.child('initialBudget').val() && newData.child('totalPlayersPurchased').isNumber() && newData.child('totalPlayersPurchased').val() >= 0 && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber()",
+        "logoUrl": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+        },
+        "purchasedPlayerIds": {
+          "$playerId": {
+            ".validate": "newData.val() === true"
+          }
+        }
+      }
+    },
+
+    "players": {
+      ".read": true,
+      "$playerId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && (newData.exists() || root.child('settings').child('auctionStatus').val() === 'not_started' || root.child('settings').child('auctionStatus').val() === 'completed')",
+        ".validate": "newData.hasChildren(['name', 'basePrice', 'segment', 'status']) && newData.child('name').isString() && newData.child('name').val().length >= 2 && newData.child('name').val().length <= 120 && newData.child('basePrice').isNumber() && newData.child('basePrice').val() >= 0 && newData.child('basePrice').val() <= 10000000 && newData.child('segment').isNumber() && newData.child('segment').val() >= 1 && newData.child('segment').val() <= root.child('settings').child('totalSegments').val() && (newData.child('status').val() === 'upcoming' || newData.child('status').val() === 'current' || newData.child('status').val() === 'sold' || newData.child('status').val() === 'unsold') && (newData.child('status').val() !== 'sold' || (newData.child('finalPrice').isNumber() && newData.child('finalPrice').val() >= newData.child('basePrice').val() && newData.child('purchasedByClubId').isString()))",
+        "photoUrl": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "department": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "academicYear": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "category": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "purchasedByClubId": {
+          ".validate": "newData.isString() && newData.val().length <= 128"
+        },
+        "finalPrice": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
+        }
+      }
+    },
+
+    "segments": {
+      ".read": true,
+      "$segmentId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['segmentNumber', 'isOrderConfirmed', 'isCompleted']) && newData.child('segmentNumber').isNumber() && newData.child('segmentNumber').val() >= 1 && newData.child('segmentNumber').val() <= root.child('settings').child('totalSegments').val() && newData.child('isOrderConfirmed').isBoolean() && newData.child('isCompleted').isBoolean()",
+        "playerIds": {
+          "$index": {
+            ".validate": "newData.isString() && newData.val().length <= 128"
+          }
+        },
+        "randomizedOrder": {
+          "$index": {
+            ".validate": "newData.isString() && newData.val().length <= 128"
+          }
+        }
+      }
+    },
+
+    "history": {
+      ".read": true,
+      "$historyId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).exists()",
+        ".validate": "newData.hasChildren(['playerId', 'playerName', 'segment', 'action', 'adminUid', 'timestamp']) && newData.child('playerId').isString() && newData.child('playerName').isString() && newData.child('segment').isNumber() && (newData.child('action').val() === 'sold' || newData.child('action').val() === 'unsold') && newData.child('adminUid').isString() && newData.child('timestamp').isNumber() && (newData.child('action').val() !== 'sold' || (newData.hasChildren(['clubId', 'clubName', 'finalPrice']) && newData.child('clubId').isString() && newData.child('clubName').isString() && newData.child('finalPrice').isNumber() && newData.child('finalPrice').val() >= 0))",
+        "clubId": {
+          ".validate": "newData.isString() && newData.val().length <= 128"
+        },
+        "clubName": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "finalPrice": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000"
+        }
+      }
+    },
+
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

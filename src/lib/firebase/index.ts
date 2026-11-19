@@ -14,3 +14,4 @@ export * from "./reset";
 export * from "./purchase";
 export * from "./auction";
 export * from "./auth";
+export * from "./backup";

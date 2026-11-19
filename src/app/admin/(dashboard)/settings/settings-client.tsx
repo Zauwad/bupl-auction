@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { BackupManager } from "./backup-manager";
 import { cn } from "@/lib/utils";
 import type { Club, Player, Segment, TournamentSettings } from "@/types";
 
@@ -234,6 +235,9 @@ export function SettingsClient() {
               </p>
             </div>
           </section>
+
+          {/* Disaster Recovery & Snapshots */}
+          <BackupManager />
 
           {/* Danger zone */}
           <section className="rounded-xl border-2 border-red-300/70 bg-red-50/50 p-6 dark:border-red-400/30 dark:bg-red-400/[0.05]">

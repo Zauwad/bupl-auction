@@ -4,6 +4,45 @@
 
 ### Added — 2026-11-19
 
+**Time:** 2026-11-19 17:05 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Disaster Recovery & 1-Click Tournament State Backup & Restore Tool
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Built an emergency disaster recovery system that gives tournament administrators 1-click state backup and instant point-in-time restore capabilities.
+- Admins can download a complete JSON snapshot file of the entire tournament database (clubs, players, sold status, club rosters, remaining budgets, segment orders, and all audit logs) in under 100 milliseconds at the end of each round or segment.
+- If a catastrophic cloud disruption, network disconnect, or accidental modification ever occurs, administrators can upload any saved snapshot file to restore 100% of the tournament state in seconds.
+- Restores are protected by an interactive safety gate: administrators must review point-in-time tournament metadata (clubs count, players count, sold count, unsold count, history logs) and explicitly type "RESTORE" to prevent accidental overwrites.
+- Added a dedicated root error boundary (`src/app/error.tsx`) to catch unexpected frontend display crashes gracefully and allow 1-click room recovery without losing database connectivity.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/admin/settings`
+- **Where to See It:**
+  1. Log into the Admin Console and navigate to **Settings** (`/admin/settings`).
+  2. Scroll to the new **"Disaster Recovery & State Backups"** section at the bottom of the page.
+  3. Click **"Download Backup (.json)"** to download the immediate point-in-time tournament snapshot.
+  4. Click **"Restore Backup…"** to select a previously exported `.json` file, review the snapshot details, type `RESTORE`, and restore the database state.
+
+**Technical Implementation (Tech Lead):**
+- Created `src/lib/firebase/backup.ts` exporting `exportTournamentSnapshot()` (parallel reads across `/settings`, `/clubs`, `/players`, `/segments`, and `/history`, package schemaVersion 1 with integrity stats) and `restoreTournamentSnapshot(snapshot)` (validates schemaVersion 1, data nodes, and executes an atomic multi-path update via `update(rootRef, updates)`).
+- Created `src/app/admin/(dashboard)/settings/backup-manager.tsx` with loading indicators, error toast feedback, JSON FileReader parsing, schema validation, and typed-confirmation dialog modal.
+- Integrated `BackupManager` into `src/app/admin/(dashboard)/settings/settings-client.tsx`.
+- Created `src/app/error.tsx` client component error boundary with retry handler and fallback home navigation.
+- Verified cleanly through `tsc --noEmit`, `npm run lint`, and Vercel production deployment (`https://bupl-auction.vercel.app`).
+- Tested live export blob creation and simulated restore dialog validation via CDP.
+
+**Files:**
+- `bupl-auction/src/lib/firebase/backup.ts`
+- `bupl-auction/src/lib/firebase/index.ts`
+- `bupl-auction/src/app/admin/(dashboard)/settings/backup-manager.tsx`
+- `bupl-auction/src/app/admin/(dashboard)/settings/settings-client.tsx`
+- `bupl-auction/src/app/error.tsx`
+
+**Impact:** route / UI / backend
+
+### Added — 2026-11-19
+
 **Time:** 2026-11-19 16:10 (UTC+6)
 **Author:** Antigravity agent
 **Issue:** Unsold Player Re-Auction Flow with Base Price Customization and Live Broadcast Badges

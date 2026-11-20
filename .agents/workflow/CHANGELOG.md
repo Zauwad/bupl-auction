@@ -2,6 +2,47 @@
 
 ## [Unreleased]
 
+### [Changed] — 2026-11-20
+
+**Time:** 2026-11-20 10:32 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Full-bleed image-first stage cards & authentic live broadcast projector redesign
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Converted all player cards on the live broadcast stage (`/live`) from boxed photo avatars into full-bleed player portraits where high-definition photos form the entire body of each card.
+- Reconstructed the authentic sports stage presentation seen during the live auction: the Left Spotlight stage features the featured player in full-bleed resolution with golden bid typography, segment badges, and acquiring franchise pill.
+- The Right Stage houses the 10-card segment grid where each card presents the player photo as the main backdrop, overlaid with rank position, green "Sold" seal, player name, winning price, and club emblem.
+- Clicking any card in the grid immediately spotlights that athlete on the main Left Stage, allowing spectators and club managers to inspect individual signings.
+- Cleaned up top header navigation to eliminate clutter and mobile text overlap by relocating segment filters directly into the right section header.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/live`
+- **Where to See It:**
+  1. Navigate to `https://bupl-auction.vercel.app/live`.
+  2. Observe the Left Spotlight Stage with a full-bleed player photo, prominent golden price tag (`৳3,500`), and signed franchise emblem pill.
+  3. Look at the Right Stage: see the 10-card grid styled exactly like the original live projector broadcast, with full-bleed photos, position numbers, "Sold" tags, player names, and prices overlaid directly on top.
+  4. Click on any card in the grid to immediately feature that player in the Left Spotlight panel.
+  5. Check on mobile screens: note clean top header with zero text collision, responsive 2-column card grid, and smooth ticker at the bottom.
+
+**Technical Implementation (Tech Lead):**
+- Completely redesigned `src/components/broadcast/broadcast-showcase-completed.tsx`:
+  - Utilized `next/image` with `fill` and `object-cover` as the main background layer for both the Left Spotlight Stage and all 10 cards in the right grid.
+  - Applied subtle vertical gradient overlays (`from-black/95 via-black/30 to-transparent`) to ensure contrast for names, gold prices, and acquiring clubs.
+  - Relocated segment navigation pills into the right section header, preventing top-bar crowding and ensuring clean responsive layout across desktop and mobile.
+  - Added interactive card selection (`setSelectedPlayerId`) with active border illumination (`ring-2 ring-amber-400`).
+  - Removed unused variables (`Flame`, `settings`) to ensure 0 ESLint warnings and 0 TypeScript errors.
+- Verified and deployed to Vercel production (`https://bupl-auction.vercel.app/live`).
+- Captured visual proof screenshots via Chrome CDP on desktop (1440x900) and mobile (390x844).
+
+**Files:**
+- `bupl-auction/src/components/broadcast/broadcast-showcase-completed.tsx`
+- `bupl-auction/docs/screenshots/live-stage-image-main-desktop.png`
+- `bupl-auction/docs/screenshots/live-stage-image-main-mobile.png`
+- `bupl-auction/docs/screenshots/home-final-desktop.png`
+
+**Impact:** route / UI
+
 ### [Added] — 2026-11-20
 
 **Time:** 2026-11-20 10:15 (UTC+6)

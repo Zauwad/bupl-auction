@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
@@ -14,9 +14,9 @@ import {
   ArrowRight,
   Shield,
   History,
+  Gavel,
 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { PlayerPhoto } from "@/components/common/player-photo";
 import { ClubLogo } from "@/components/common/club-logo";
 import { SEGMENT_COUNT, segmentDisplayName } from "@/lib/constants";
 import { computeAuctionStats, topBuyPerSegment } from "@/lib/stats";
@@ -28,44 +28,86 @@ interface BroadcastShowcaseCompletedProps {
   settings: TournamentSettings | null;
 }
 
-const SCENE_NAMES = [
-  "Champions Recap",
-  "Top Signings Podium",
-  "Round Replay",
-  "Squad Leaderboard",
+const VIEW_TABS = [
+  { id: "top", label: "Top Signings" },
+  { id: "seg-1", label: "Seg 1: Game Changer", segment: 1 },
+  { id: "seg-2", label: "Seg 2: Stroke Maker", segment: 2 },
+  { id: "seg-3", label: "Seg 3: Trump Card", segment: 3 },
+  { id: "seg-4", label: "Seg 4: Assassin", segment: 4 },
+  { id: "seg-5", label: "Seg 5: Young Blood", segment: 5 },
+  { id: "stats", label: "Tournament Stats" },
 ] as const;
 
-const SCENE_INTERVAL_MS = 8000;
+const AUTO_ROTATE_INTERVAL_MS = 9000;
 
 export function BroadcastShowcaseCompleted({
   players,
   clubs,
-  settings,
 }: BroadcastShowcaseCompletedProps) {
   const stats = computeAuctionStats(players, clubs, 8);
   const segmentTopBuys = topBuyPerSegment(players, clubs, SEGMENT_COUNT);
 
-  const [activeScene, setActiveScene] = useState<number>(0);
+  const [activeTabIdx, setActiveTabIdx] = useState<number>(0);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
 
-  // Top 3 for podium
-  const top3 = stats.mostExpensive.slice(0, 3);
-  const soldPlayers = players.filter(
-    (p) => p.status === "sold" && p.finalPrice !== null,
+  const activeTab = VIEW_TABS[activeTabIdx];
+
+  // Map of clubs
+  const clubById = useMemo(() => {
+    const map = new Map<string, Club>();
+    for (const c of clubs) map.set(c.id, c);
+    return map;
+  }, [clubs]);
+
+  // Players to display in the 10-card grid depending on active tab
+  const displayPlayers = useMemo(() => {
+    if (activeTab.id === "top") {
+      return stats.mostExpensive.slice(0, 10).map((m) => m.player);
+    }
+    if ("segment" in activeTab && activeTab.segment) {
+      return players
+        .filter((p) => p.segment === activeTab.segment && p.status === "sold")
+        .slice(0, 10);
+    }
+    // Tournament stats view
+    return stats.mostExpensive.slice(0, 10).map((m) => m.player);
+  }, [activeTab, players, stats.mostExpensive]);
+
+  // Featured player in Left Spotlight Stage
+  const featuredPlayer = useMemo(() => {
+    if (selectedPlayerId) {
+      const found = players.find((p) => p.id === selectedPlayerId);
+      if (found) return found;
+    }
+    if (displayPlayers.length > 0) {
+      return displayPlayers[0];
+    }
+    return stats.highestSale?.player ?? players[0] ?? null;
+  }, [selectedPlayerId, displayPlayers, stats.highestSale, players]);
+
+  const featuredClub = featuredPlayer
+    ? clubById.get(featuredPlayer.purchasedByClubId ?? "")
+    : null;
+
+  const soldPlayers = useMemo(
+    () => players.filter((p) => p.status === "sold" && p.finalPrice !== null),
+    [players],
   );
 
-  // Auto-rotation timer
+  // Auto-advance tabs
   useEffect(() => {
     if (isPaused) return;
 
-    const stepMs = 100;
-    const increment = (stepMs / SCENE_INTERVAL_MS) * 100;
+    const stepMs = 50;
+    const increment = (stepMs / AUTO_ROTATE_INTERVAL_MS) * 100;
 
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
-          setActiveScene((current) => (current + 1) % SCENE_NAMES.length);
+          setActiveTabIdx((current) => (current + 1) % VIEW_TABS.length);
+          setSelectedPlayerId(null);
           return 0;
         }
         return prev + increment;
@@ -75,62 +117,49 @@ export function BroadcastShowcaseCompleted({
     return () => clearInterval(timer);
   }, [isPaused]);
 
-  const handleSelectScene = (idx: number) => {
-    setActiveScene(idx);
+  const handleSelectTab = (idx: number) => {
+    setActiveTabIdx(idx);
+    setSelectedPlayerId(null);
     setProgress(0);
   };
 
+  const isHighestOverall =
+    featuredPlayer && stats.highestSale?.player.id === featuredPlayer.id;
+
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-black text-white select-none">
-      {/* ════════ STAGE HEADER ════════ */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-zinc-950 px-3 sm:px-6">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+    <div className="flex min-h-screen w-screen flex-col overflow-x-hidden bg-black text-white select-none xl:h-screen xl:min-h-0 xl:overflow-hidden">
+      {/* ════════ TOP BAR — EXACT LUXURY STAGE HEADER ════════ */}
+      <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-red-900/40 bg-gradient-to-r from-[#2a1418] via-zinc-950 to-[#2a1418] px-4 sm:px-6">
+        <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
           <Image
-            src="/images/logos/bupl_logo.webp"
-            alt="BUPL 2026"
-            width={36}
-            height={36}
-            className="size-8 sm:size-10 shrink-0 object-contain drop-shadow-[0_0_12px_rgba(251,191,36,0.35)]"
+            src="/images/logos/cbu_logo.webp"
+            alt="Cricket BRAC University"
+            width={56}
+            height={56}
+            className="size-10 shrink-0 object-contain drop-shadow-[0_0_10px_rgba(56,189,248,0.35)] sm:size-12"
           />
-          <div className="min-w-0">
-            <h1 className="font-display text-sm font-black uppercase tracking-wider text-zinc-100 truncate sm:text-lg">
-              {settings?.tournamentName ?? "BUPL 2026"}
-            </h1>
-            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-zinc-400 truncate">
-              Stage Broadcast · Season Wrap
+          <div className="leading-tight">
+            <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-sky-400 sm:text-[9px] sm:tracking-[0.4em]">
+              Cricket BRAC University
             </p>
+            <h1 className="font-display text-lg font-bold uppercase leading-none tracking-wide text-zinc-50 sm:text-2xl lg:text-3xl">
+              Player <span className="text-amber-400">Auction</span>
+            </h1>
           </div>
         </div>
 
-        {/* Scene Switcher & Play/Pause (Fully responsive on mobile) */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Scrollable scene pills */}
-          <div className="flex max-w-[220px] sm:max-w-none items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-            {SCENE_NAMES.map((name, idx) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => handleSelectScene(idx)}
-                className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] sm:text-xs font-bold transition duration-200 ${
-                  activeScene === idx
-                    ? "border border-amber-400 bg-amber-400/15 text-amber-300"
-                    : "border border-white/10 bg-white/5 text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                {idx + 1}. {name}
-              </button>
-            ))}
-          </div>
-
+        {/* Status Badge & Controls */}
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setIsPaused((prev) => !prev)}
+            aria-label={isPaused ? "Resume auto rotation" : "Pause auto rotation"}
             className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs font-semibold text-zinc-200 transition hover:border-amber-400/40 shrink-0"
           >
             {isPaused ? (
               <>
                 <Play className="size-3 text-amber-400" />
-                <span className="hidden md:inline">Resume</span>
+                <span className="hidden md:inline">Play</span>
               </>
             ) : (
               <>
@@ -140,367 +169,323 @@ export function BroadcastShowcaseCompleted({
             )}
           </button>
 
-          <span className="hidden xs:inline-flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-400/10 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-sky-400 shrink-0">
-            <span className="size-1.5 sm:size-2 rounded-full bg-sky-400" />
-            Final
+          <span className="flex items-center gap-1.5 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 sm:px-3 shrink-0">
+            <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            <span className="font-display text-xs font-bold uppercase tracking-[0.2em] text-emerald-400 sm:text-sm">
+              Concluded
+            </span>
           </span>
+
+          <Image
+            src="/images/logos/bupl_logo.webp"
+            alt="BUPL 2026"
+            width={56}
+            height={56}
+            className="hidden size-11 object-contain drop-shadow-[0_0_12px_rgba(251,191,36,0.35)] sm:block shrink-0"
+          />
         </div>
       </header>
 
-      {/* Progress countdown bar */}
-      <div className="h-1 w-full bg-zinc-900">
+      {/* Progress bar countdown */}
+      <div className="h-0.5 w-full bg-zinc-950">
         <div
-          className="h-full bg-amber-400 transition-all duration-100 ease-linear"
+          className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-300 transition-all duration-75 ease-linear"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* ════════ STAGE MAIN ARENA WITH SMOOTH MOTION ════════ */}
-      <main className="relative flex min-h-0 flex-1 flex-col justify-center overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <AnimatePresence mode="wait">
-          {/* ── SCENE 0: TOURNAMENT RECAP (HERO BIG IMAGE MAGAZINE DISPLAY) ── */}
-          {activeScene === 0 && (
-            <motion.div
-              key="scene-0"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-6"
-            >
-              <div className="grid w-full items-center gap-6 md:grid-cols-12">
-                {/* Large Hero Image Section: Record Signing MVP Card */}
-                {stats.highestSale && (
-                  <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-amber-400/50 bg-gradient-to-b from-amber-400/15 via-zinc-900 to-zinc-950 p-6 sm:p-8 text-center shadow-[0_0_50px_rgba(251,191,36,0.25)] md:col-span-5 w-full">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400 bg-amber-400/20 px-3 py-1 font-mono text-xs font-black uppercase tracking-wider text-amber-300">
-                      <Trophy className="size-3.5 text-amber-300" />
-                      Record Signing
+      {/* ════════ MAIN STAGE — LUXURY TWO-COLUMN STAGE BROADCAST ════════ */}
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-12 xl:overflow-hidden">
+        {/* ── LEFT: SPOTLIGHT HERO (IMAGE IS THE MAIN DIV) ── */}
+        <section className="col-span-1 flex min-h-[460px] flex-col gap-3 lg:col-span-5 xl:col-span-4 xl:h-full xl:min-h-0">
+          <div className="relative flex flex-1 min-h-[440px] flex-col overflow-hidden rounded-2xl border-2 border-amber-400/60 bg-gradient-to-b from-[#3a1f22] via-[#2b1518] to-[#1d0e11] shadow-[0_0_35px_rgba(251,191,36,0.25)] xl:min-h-0">
+            {featuredPlayer ? (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={featuredPlayer.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="relative h-full w-full"
+                >
+                  {/* FULL BLEED IMAGE AS MAIN SECTION */}
+                  {featuredPlayer.photoUrl ? (
+                    <Image
+                      src={featuredPlayer.photoUrl}
+                      alt={featuredPlayer.name}
+                      fill
+                      sizes="(max-width: 1280px) 50vw, 33vw"
+                      className="object-cover object-top"
+                      priority
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-amber-950 via-zinc-950 to-zinc-950">
+                      <span className="font-display text-[10rem] font-black text-amber-400/20">
+                        {featuredPlayer.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Dark gradient overlay for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent" />
+
+                  {/* Top badges placed directly on image */}
+                  <div className="absolute left-3.5 top-3.5 flex flex-wrap items-center gap-1.5 sm:gap-2 z-10 max-w-[65%]">
+                    <span className="rounded-md border border-amber-400/60 bg-black/70 px-2 py-0.5 sm:px-2.5 sm:py-1 font-mono text-[10px] sm:text-xs font-bold text-amber-300 backdrop-blur">
+                      Segment {featuredPlayer.segment} ·{" "}
+                      {segmentDisplayName(featuredPlayer.segment)}
                     </span>
-
-                    <div className="my-4 sm:my-5">
-                      <PlayerPhoto
-                        photoUrl={stats.highestSale.player.photoUrl}
-                        name={stats.highestSale.player.name}
-                        size={144}
-                        className="size-32 sm:size-40 md:size-48 rounded-3xl border-4 border-amber-400 bg-black object-cover shadow-[0_0_35px_rgba(251,191,36,0.35)]"
-                      />
-                    </div>
-
-                    <h3 className="font-display text-2xl sm:text-3xl font-black text-white truncate max-w-full px-2">
-                      {stats.highestSale.player.name}
-                    </h3>
-                    <p className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-amber-400 mt-1">
-                      {formatPrice(stats.highestSale.player.finalPrice ?? 0)}
-                    </p>
-                    <p className="text-xs sm:text-sm font-semibold text-zinc-300 mt-1 truncate max-w-full">
-                      Signed by {stats.highestSale.clubName}
-                    </p>
-                  </div>
-                )}
-
-                {/* Tournament Stats & Information Column */}
-                <div className="flex flex-col justify-center text-center md:text-left md:col-span-7 w-full">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-amber-400 w-fit mx-auto md:mx-0">
-                    <Trophy className="size-3.5" />
-                    Tournament Rosters Sealed
+                    {isHighestOverall && (
+                      <span className="rounded-md border border-amber-400 bg-amber-400/20 px-2 py-0.5 sm:px-2.5 sm:py-1 font-mono text-[10px] sm:text-xs font-black uppercase text-amber-300 backdrop-blur">
+                        #1 Buy
+                      </span>
+                    )}
                   </div>
 
-                  <h2 className="mt-3 font-display text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-zinc-100">
-                    All 50 Players Signed
-                  </h2>
-                  <p className="mt-2 max-w-xl text-sm sm:text-base text-zinc-400 mx-auto md:mx-0">
-                    10 franchise clubs have finalized their 5-player squads across all
-                    5 auction segments. Season rosters are officially locked.
-                  </p>
+                  <span className="absolute right-3.5 top-3.5 flex items-center gap-1 sm:gap-1.5 rounded-full border border-emerald-400/80 bg-black/70 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.35)] backdrop-blur z-10">
+                    <Gavel className="size-3 sm:size-3.5 text-emerald-400" />
+                    <span className="hidden sm:inline">Hammer Dropped · </span>Sold
+                  </span>
 
-                  {/* 4 Scoreboard Dials */}
-                  <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3.5 w-full">
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-3.5 sm:p-5 text-center">
-                      <Users className="mx-auto size-5 text-emerald-400" />
-                      <p className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">
-                        {stats.sold} / {stats.totalPlayers}
-                      </p>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Players Signed
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-3.5 sm:p-5 text-center">
-                      <BadgeDollarSign className="mx-auto size-5 text-amber-400" />
-                      <p className="font-display mt-2 text-2xl font-black text-amber-400 sm:text-3xl">
-                        {formatPrice(stats.totalSalesValue)}
-                      </p>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Total Expenditure
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-3.5 sm:p-5 text-center">
-                      <TrendingUp className="mx-auto size-5 text-sky-400" />
-                      <p className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">
-                        {formatPrice(stats.averageSale)}
-                      </p>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Average Price
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-3.5 sm:p-5 text-center">
-                      <Shield className="mx-auto size-5 text-purple-400" />
-                      <p className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">
-                        {clubs.length || 10}
-                      </p>
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                        Clubs Sealed
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── SCENE 1: THE GOLDEN HAMMER PODIUM (BIG HERO PORTRAITS) ── */}
-          {activeScene === 1 && (
-            <motion.div
-              key="scene-1"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center gap-5 min-w-0"
-            >
-              <div className="text-center min-w-0">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Top 3 Purchases
-                </span>
-                <h2 className="font-display text-3xl font-black uppercase text-zinc-100 sm:text-5xl truncate">
-                  The Golden Hammer Podium
-                </h2>
-              </div>
-
-              {/* Responsive Podium: Stack #1 on top with gold glow, #2 & #3 side-by-side on mobile */}
-              <div className="grid w-full items-end gap-3 pt-2 sm:grid-cols-3 sm:gap-4 min-w-0">
-                {/* #2 PODIUM (Left on desktop, column 1 on mobile) */}
-                {top3[1] && (
-                  <div className="order-2 flex flex-col items-center rounded-3xl border border-white/15 bg-gradient-to-b from-zinc-800/80 via-zinc-900/90 to-zinc-950 p-5 sm:p-6 text-center shadow-lg transition sm:order-1 min-w-0 w-full">
-                    <span className="rounded-md border border-zinc-400/50 bg-zinc-400/15 px-2.5 py-0.5 font-mono text-xs font-black uppercase text-zinc-200">
-                      #2 Signing
-                    </span>
-
-                    <div className="my-3 sm:my-4">
-                      <PlayerPhoto
-                        photoUrl={top3[1].player.photoUrl}
-                        name={top3[1].player.name}
-                        size={120}
-                        className="size-24 sm:size-32 md:size-36 rounded-2xl border-2 border-zinc-400/50 object-cover shadow-lg"
-                      />
-                    </div>
-
-                    <h3 className="mt-1 w-full min-w-0 max-w-full truncate font-bold text-zinc-100 text-base sm:text-xl px-1">
-                      {top3[1].player.name}
-                    </h3>
-                    <p className="font-display text-2xl font-black text-zinc-100 mt-0.5 sm:text-3xl">
-                      {formatPrice(top3[1].player.finalPrice ?? 0)}
+                  {/* Bottom details directly on image */}
+                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6 z-10 flex flex-col gap-2">
+                    <p className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.3em] text-amber-400">
+                      <Trophy className="size-3.5" aria-hidden />
+                      {featuredPlayer.category ?? "University Player"}
                     </p>
-                    <p className="text-xs text-zinc-400 mt-1 w-full min-w-0 max-w-full truncate px-1">
-                      {top3[1].clubName}
-                    </p>
-                  </div>
-                )}
 
-                {/* #1 PODIUM (Center on desktop, top on mobile) */}
-                {top3[0] && (
-                  <div className="order-1 flex flex-col items-center rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-amber-400/20 via-zinc-900 to-zinc-950 p-6 sm:p-8 text-center shadow-[0_0_50px_rgba(251,191,36,0.35)] sm:order-2 min-w-0 w-full">
-                    <span className="rounded-md border border-amber-400 bg-amber-400/25 px-3 py-1 font-mono text-xs font-black uppercase text-amber-300">
-                      #1 Record Buy
-                    </span>
+                    <h1 className="font-display text-3xl sm:text-4xl xl:text-5xl font-bold uppercase leading-[0.95] text-zinc-50 drop-shadow-md">
+                      {featuredPlayer.name}
+                    </h1>
 
-                    <div className="my-4 sm:my-5">
-                      <PlayerPhoto
-                        photoUrl={top3[0].player.photoUrl}
-                        name={top3[0].player.name}
-                        size={160}
-                        className="size-32 sm:size-44 md:size-52 rounded-3xl border-4 border-amber-400 bg-black object-cover shadow-[0_0_35px_rgba(251,191,36,0.45)]"
-                      />
+                    <div className="flex items-baseline gap-3 pt-1">
+                      <span className="font-display text-4xl sm:text-5xl font-black text-amber-400 drop-shadow-[0_2px_12px_rgba(251,191,36,0.5)]">
+                        {formatPrice(featuredPlayer.finalPrice ?? 0)}
+                      </span>
+                      <span className="text-xs text-zinc-400">
+                        Base: {formatPrice(featuredPlayer.basePrice)}
+                      </span>
                     </div>
 
-                    <h3 className="mt-1 w-full min-w-0 max-w-full truncate font-black text-zinc-100 text-xl sm:text-3xl px-1">
-                      {top3[0].player.name}
-                    </h3>
-                    <p className="font-display text-3xl font-black text-amber-400 mt-0.5 sm:text-5xl">
-                      {formatPrice(top3[0].player.finalPrice ?? 0)}
-                    </p>
-                    <p className="text-xs font-semibold text-zinc-300 mt-1 w-full min-w-0 max-w-full truncate sm:text-sm px-1">
-                      Signed by {top3[0].clubName}
-                    </p>
-                  </div>
-                )}
-
-                {/* #3 PODIUM (Right on desktop, column 2 on mobile) */}
-                {top3[2] && (
-                  <div className="order-3 flex flex-col items-center rounded-3xl border border-white/15 bg-gradient-to-b from-amber-950/40 via-zinc-900/90 to-zinc-950 p-5 sm:p-6 text-center shadow-lg transition min-w-0 w-full">
-                    <span className="rounded-md border border-amber-700/50 bg-amber-700/20 px-2.5 py-0.5 font-mono text-xs font-black uppercase text-amber-500">
-                      #3 Signing
-                    </span>
-
-                    <div className="my-3 sm:my-4">
-                      <PlayerPhoto
-                        photoUrl={top3[2].player.photoUrl}
-                        name={top3[2].player.name}
-                        size={120}
-                        className="size-24 sm:size-32 md:size-36 rounded-2xl border-2 border-amber-700/50 object-cover shadow-lg"
-                      />
-                    </div>
-
-                    <h3 className="mt-1 w-full min-w-0 max-w-full truncate font-bold text-zinc-100 text-base sm:text-xl px-1">
-                      {top3[2].player.name}
-                    </h3>
-                    <p className="font-display text-2xl font-black text-amber-500 mt-0.5 sm:text-3xl">
-                      {formatPrice(top3[2].player.finalPrice ?? 0)}
-                    </p>
-                    <p className="text-xs text-zinc-400 mt-1 w-full min-w-0 max-w-full truncate px-1">
-                      {top3[2].clubName}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── SCENE 2: SEGMENT ROUNDS REPLAY (BIG SPORTS CARD LINEUP) ── */}
-          {activeScene === 2 && (
-            <motion.div
-              key="scene-2"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-5"
-            >
-              <div className="text-center">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Round Leaders
-                </span>
-                <h2 className="font-display text-3xl font-black uppercase text-zinc-100 sm:text-5xl">
-                  Segment Signings
-                </h2>
-              </div>
-
-              <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {segmentTopBuys.map((seg) => (
-                  <div
-                    key={seg.segment}
-                    className="flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/90 to-zinc-950 p-4 transition shadow-md"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                          Segment {seg.segment}
-                        </span>
-                        <span className="font-mono text-[10px] text-zinc-400">
-                          {seg.soldCount} sold
-                        </span>
-                      </div>
-
-                      <h4 className="mt-2 text-xs sm:text-sm font-bold text-zinc-200 truncate">
-                        {segmentDisplayName(seg.segment)}
-                      </h4>
-
-                      {seg.player ? (
-                        <div className="mt-3 flex flex-col items-center text-center">
-                          <PlayerPhoto
-                            photoUrl={seg.player.photoUrl}
-                            name={seg.player.name}
-                            size={96}
-                            className="size-20 sm:size-24 md:size-28 rounded-2xl border-2 border-amber-400/40 bg-zinc-950 object-cover shadow-lg"
-                          />
-                          <p className="mt-2.5 truncate w-full max-w-full text-xs sm:text-sm font-black text-zinc-100">
-                            {seg.player.name}
+                    {featuredClub && (
+                      <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/15 bg-black/70 p-3 backdrop-blur">
+                        <ClubLogo
+                          logoUrl={featuredClub.logoUrl}
+                          name={featuredClub.name}
+                          size={32}
+                          className="shrink-0 rounded-lg border border-white/10 p-0.5"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                            Signed Franchise
                           </p>
-                          <p className="font-display text-lg sm:text-xl font-black text-amber-400">
-                            {formatPrice(seg.player.finalPrice ?? 0)}
+                          <p className="truncate text-xs sm:text-sm font-bold text-zinc-100">
+                            {featuredClub.name}
                           </p>
                         </div>
-                      ) : (
-                        <p className="mt-6 text-xs text-zinc-500 text-center">
-                          No sales recorded
-                        </p>
-                      )}
-                    </div>
-
-                    {seg.club && (
-                      <div className="mt-3 border-t border-white/10 pt-2 text-[10px] sm:text-[11px] text-zinc-400 truncate text-center font-medium">
-                        {seg.club.name}
                       </div>
                     )}
                   </div>
+                </motion.div>
+              </AnimatePresence>
+            ) : null}
+          </div>
+        </section>
+
+        {/* ── RIGHT: 10 CARDS GRID (IMAGES AS MAIN SECTION OF EVERY CARD) ── */}
+        <section className="col-span-1 flex min-h-0 flex-col gap-3 lg:col-span-7 xl:col-span-8 xl:h-full">
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:h-16 shrink-0 items-start sm:items-center justify-between gap-2.5 rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-900 via-zinc-900 to-zinc-900/60 p-3 sm:px-6">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <h2 className="font-display text-xl sm:text-2xl xl:text-3xl font-bold uppercase leading-none tracking-wide text-amber-400">
+                {activeTab.id === "top"
+                  ? "Tournament Top Signings"
+                  : activeTab.id === "stats"
+                  ? "Tournament Scoreboard"
+                  : segmentDisplayName((activeTab as { segment: number }).segment)}
+              </h2>
+
+              <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[11px] sm:text-xs font-bold text-zinc-300">
+                {activeTab.id === "stats"
+                  ? "50 / 50 Signed"
+                  : `${displayPlayers.length} / 10 Signed`}
+              </span>
+            </div>
+
+            {/* Segment selection tabs inside the right section header */}
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+              {VIEW_TABS.map((tab, idx) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleSelectTab(idx)}
+                  className={`shrink-0 rounded-lg px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition duration-200 ${
+                    activeTabIdx === idx
+                      ? "border border-amber-400 bg-amber-400/20 text-amber-300"
+                      : "border border-white/10 bg-white/5 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* If Stats view is active, show the 4 scoreboard dials + club summary */}
+          {activeTab.id === "stats" ? (
+            <div className="flex flex-1 flex-col gap-3 min-h-0 overflow-y-auto scrollbar-dark">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4 text-center">
+                  <Users className="mx-auto size-5 text-emerald-400" />
+                  <p className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">
+                    {stats.sold} / {stats.totalPlayers}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    Players Signed
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4 text-center">
+                  <BadgeDollarSign className="mx-auto size-5 text-amber-400" />
+                  <p className="font-display mt-2 text-2xl font-black text-amber-400 sm:text-3xl">
+                    {formatPrice(stats.totalSalesValue)}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    Total Spend
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4 text-center">
+                  <TrendingUp className="mx-auto size-5 text-sky-400" />
+                  <p className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">
+                    {formatPrice(stats.averageSale)}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    Average Price
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4 text-center">
+                  <Shield className="mx-auto size-5 text-purple-400" />
+                  <p className="font-display mt-2 text-2xl font-black text-white sm:text-3xl">
+                    {clubs.length || 10}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    Clubs Sealed
+                  </p>
+                </div>
+              </div>
+
+              {/* 5 Segment Top Buys in Big Image Cards */}
+              <div className="grid flex-1 gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:min-h-0">
+                {segmentTopBuys.map((seg) => (
+                  <div
+                    key={seg.segment}
+                    onClick={() => seg.player && setSelectedPlayerId(seg.player.id)}
+                    className="relative flex min-h-[180px] flex-col overflow-hidden rounded-xl border-2 border-emerald-500/80 shadow-[0_0_16px_rgba(52,211,153,0.25)] bg-zinc-950 cursor-pointer transition hover:scale-[1.02] hover:border-amber-400"
+                  >
+                    {seg.player?.photoUrl ? (
+                      <Image
+                        src={seg.player.photoUrl}
+                        alt={seg.player.name}
+                        fill
+                        sizes="(max-width: 1280px) 25vw, 16vw"
+                        className="object-cover object-top"
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-transparent" />
+                    <span className="absolute left-2 top-2 z-10 rounded-md border border-amber-400/60 bg-black/70 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
+                      Seg {seg.segment}
+                    </span>
+                    <span className="absolute right-2 top-2 z-10 rounded-md border border-emerald-400/60 bg-emerald-400/20 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase text-emerald-300">
+                      Top Buy
+                    </span>
+
+                    <div className="absolute inset-x-0 bottom-0 p-2.5 z-10">
+                      <p className="font-display truncate text-sm font-bold uppercase leading-tight text-zinc-100">
+                        {seg.player?.name}
+                      </p>
+                      <p className="font-display text-sm font-black text-amber-400">
+                        {formatPrice(seg.player?.finalPrice ?? 0)}
+                      </p>
+                      <p className="truncate text-[10px] text-zinc-400 font-medium">
+                        {seg.club?.name}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </motion.div>
-          )}
+            </div>
+          ) : (
+            /* The 10 Player Cards Grid — Images are the MAIN DIV of each card */
+            <div className="grid flex-1 gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-5 xl:grid-rows-2 auto-rows-[160px] sm:auto-rows-[185px] xl:auto-rows-auto xl:min-h-0">
+              {displayPlayers.map((player, index) => {
+                const club = clubById.get(player.purchasedByClubId ?? "");
+                const isSelected = featuredPlayer?.id === player.id;
+                return (
+                  <div
+                    key={player.id}
+                    onClick={() => {
+                      setSelectedPlayerId(player.id);
+                      setIsPaused(true);
+                    }}
+                    className={`relative flex min-h-0 flex-col overflow-hidden rounded-xl border-2 transition-all duration-300 cursor-pointer ${
+                      isSelected
+                        ? "border-amber-400 shadow-[0_0_28px_rgba(251,191,36,0.5)] scale-[1.02] ring-2 ring-amber-400"
+                        : "border-emerald-500/80 shadow-[0_0_18px_rgba(52,211,153,0.25)] hover:border-amber-400 hover:scale-[1.02]"
+                    } bg-zinc-950`}
+                  >
+                    {/* Position badge */}
+                    <span className="absolute left-2 top-2 z-10 flex size-6 items-center justify-center rounded-md border border-white/20 bg-black/70 font-mono text-[11px] font-bold text-zinc-300 backdrop-blur">
+                      {index + 1}
+                    </span>
 
-          {/* ── SCENE 3: CLUB SQUAD LEADERBOARD (ENLARGED CRESTS & SCROLLBAR) ── */}
-          {activeScene === 3 && (
-            <motion.div
-              key="scene-3"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto flex w-full max-w-6xl flex-col items-center justify-center gap-5"
-            >
-              <div className="text-center">
-                <span className="text-xs font-black uppercase tracking-wider text-amber-400">
-                  Rosters & Balances
-                </span>
-                <h2 className="font-display text-3xl font-black uppercase text-zinc-100 sm:text-5xl">
-                  Squad Completion Board
-                </h2>
-              </div>
+                    {/* Sold chip */}
+                    <span className="absolute right-2 top-2 z-10 rounded-md border border-emerald-400/60 bg-emerald-400/20 px-2 py-0.5 font-display text-[10px] font-bold uppercase tracking-wider text-emerald-300 backdrop-blur">
+                      Sold
+                    </span>
 
-              <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5 scrollbar-dark max-h-[60vh] overflow-y-auto p-1">
-                {clubs.map((club) => {
-                  const boughtCount = players.filter(
-                    (p) => p.status === "sold" && p.purchasedByClubId === club.id,
-                  ).length;
-                  return (
-                    <div
-                      key={club.id}
-                      className="flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/90 to-zinc-950 p-4 transition shadow-md"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <ClubLogo
-                            logoUrl={club.logoUrl}
-                            name={club.name}
-                            size={44}
-                            className="size-11 sm:size-12 rounded-xl border border-white/10 p-1 bg-black/40 shadow-sm"
-                          />
-                          <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 font-mono text-[10px] sm:text-[11px] font-bold text-emerald-400">
-                            {boughtCount}/5 Squad
-                          </span>
-                        </div>
-                        <h4 className="mt-3 line-clamp-1 text-xs sm:text-sm font-bold text-zinc-100">
-                          {club.name}
-                        </h4>
+                    {/* FULL BLEED IMAGE AS THE MAIN CARD DIV */}
+                    {player.photoUrl ? (
+                      <Image
+                        src={player.photoUrl}
+                        alt={player.name}
+                        fill
+                        sizes="(max-width: 1280px) 25vw, 16vw"
+                        className="object-cover object-top transition duration-500 hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-950">
+                        <span className="font-display text-6xl font-bold text-zinc-700">
+                          {player.name.charAt(0).toUpperCase()}
+                        </span>
                       </div>
+                    )}
 
-                      <div className="mt-3.5 border-t border-white/10 pt-2 text-[11px]">
-                        <div className="flex justify-between items-center text-zinc-400">
-                          <span>Left:</span>
-                          <strong className="font-mono text-xs sm:text-sm text-zinc-100">
-                            {formatPrice(club.remainingBudget)}
-                          </strong>
-                        </div>
+                    {/* Dark gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
+
+                    {/* Details pinned at the bottom on top of the image */}
+                    <div className="absolute inset-x-0 bottom-0 p-2.5 z-10">
+                      <p className="font-display truncate text-sm font-bold uppercase leading-tight text-zinc-100">
+                        {player.name}
+                      </p>
+                      <div className="mt-0.5 flex items-baseline justify-between gap-1">
+                        <span className="font-display text-sm font-black text-amber-400">
+                          {formatPrice(player.finalPrice ?? 0)}
+                        </span>
+                        <span className="truncate text-[10px] text-zinc-400 font-medium max-w-[65%]">
+                          {club?.name ?? ""}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </motion.div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </AnimatePresence>
+        </section>
       </main>
 
       {/* ════════ BOTTOM TV NEWS TICKER (SLOW, CALM SPEED) ════════ */}
@@ -513,7 +498,7 @@ export function BroadcastShowcaseCompleted({
         <div className="relative flex-1 overflow-hidden whitespace-nowrap pl-3 sm:pl-4">
           <div className="animate-ticker text-zinc-300">
             {soldPlayers.map((p, idx) => {
-              const club = clubs.find((c) => c.id === p.purchasedByClubId);
+              const club = clubById.get(p.purchasedByClubId ?? "");
               return (
                 <span key={p.id} className="inline-flex items-center gap-2 mr-8">
                   <span className="font-mono font-bold text-amber-400">

@@ -22,9 +22,13 @@ export function PlayerPhoto({ photoUrl, name, size = 40, className }: PlayerPhot
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 
+  const hasCustomSize =
+    className &&
+    (/\bsize-\S+/.test(className) ||
+      (/\bw-\S+/.test(className) && /\bh-\S+/.test(className)));
+
   const box = {
-    width: size,
-    height: size,
+    ...(hasCustomSize ? {} : { width: size, height: size }),
     fontSize: Math.max(10, Math.round(size * 0.36)),
   };
 

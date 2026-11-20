@@ -206,11 +206,51 @@
   animation: shimmer-sweep 3.5s linear infinite;
 }
 
+/* Ticker ribbon animation — calm, legible television glide */
+@keyframes ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+.animate-ticker {
+  display: inline-flex;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker 130s linear infinite;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* Visible dark native scrollbar for tables and horizontal lists */
+.scrollbar-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) rgba(24, 24, 27, 0.85);
+}
+.scrollbar-dark::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+  display: block;
+}
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: rgba(24, 24, 27, 0.85);
+  border-radius: 9999px;
+  margin: 0 4px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(251, 191, 36, 0.6);
+}
+
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .animate-broadcast-in,
   .animate-sold-flash,
   .animate-live-ping,
+  .animate-ticker,
   .text-shimmer {
     animation: none !important;
   }

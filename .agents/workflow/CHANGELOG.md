@@ -4,6 +4,185 @@
 
 ### [Added] — 2026-11-20
 
+**Time:** 2026-11-20 10:15 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Broadcast big-image aesthetic layout, relaxed slide transitions & visible dark scrollbars
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Redesigned the television broadcast stage (`/live`) to feature large, high-definition player portraits and prominent franchise emblems across all showcase scenes while keeping every title and metric intact.
+- Scene 0 now spotlights the Record Signing MVP in a large golden showcase card alongside the official 50-player completion scoreboard dials.
+- The Golden Hammer Podium (Scene 1) now displays large sports gala portraits for the top 3 purchases with custom gold, silver, and bronze pedestals.
+- Round Replay (Scene 2) upgraded each segment top buy into an official sports trading card with prominent player photos.
+- Relaxed the Tournament Top Signings slide transition on the home page (`/`) to a smooth 5.5-second pace with a silky 0.38s crossfade, giving visitors ample time to comfortably read player stats.
+- Added a visible, subtle dark native scrollbar to the Club Spending Leaderboard table so mobile, tablet, and desktop viewers immediately recognize that the financial ledger can be scrolled horizontally.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/live` and `https://bupl-auction.vercel.app/`
+- **Where to See It:**
+  1. Navigate to `https://bupl-auction.vercel.app/live`: Observe the large Record Signing player portrait card in Scene 1 (Champions Recap), the large gala podium portraits in Scene 2 (The Golden Hammer Podium), and the trading-card player photos in Scene 3 (Segment Signings).
+  2. Visit `https://bupl-auction.vercel.app/`: Watch the Tournament Top Signings carousel transition comfortably every 5.5 seconds with its amber progress bar.
+  3. Scroll down to "Club Spending Leaderboard" on the home page: Notice the sleek dark native scrollbar along the bottom of the table.
+
+**Technical Implementation (Tech Lead):**
+- Overhauled `src/components/broadcast/broadcast-showcase-completed.tsx`:
+  - Upgraded Scene 0 into a two-column responsive hero split featuring a 180px Record Signing MVP portrait with glowing amber shadow, gold pill badge, display pricing, and 4 telemetry dials.
+  - Increased Podium player photos in Scene 1 to `size-52` (#1 Record Buy) and `size-36` (#2 / #3) with metallic gradient framing.
+  - Redesigned Scene 2 segment cards into vertical cards featuring `size-28` player portraits, segment badges, and acquiring franchise badges.
+  - Enlarged Club Logos in Scene 3 to `size-12` and added vertical scrolling with `.scrollbar-dark`.
+- Adjusted slideshow timing in `src/components/home/post-auction-highlights.tsx` to `SLIDE_DURATION = 5500ms` and `duration: 0.38s`.
+- Added `.scrollbar-dark` in `src/app/globals.css` with both standard `scrollbar-width: thin; scrollbar-color: ...` and WebKit pseudo-elements (`::-webkit-scrollbar`, track, thumb).
+- Removed unused imports and verified 0 ESLint errors and 0 TypeScript errors.
+- Deployed to Vercel production and verified with Chrome CDP screenshots.
+
+**Files:**
+- `bupl-auction/src/components/broadcast/broadcast-showcase-completed.tsx`
+- `bupl-auction/src/components/home/post-auction-highlights.tsx`
+- `bupl-auction/src/app/globals.css`
+- `bupl-auction/docs/screenshots/live-hero-desktop.png`
+- `bupl-auction/docs/screenshots/live-podium-desktop.png`
+- `bupl-auction/docs/screenshots/live-segments-desktop.png`
+- `bupl-auction/docs/screenshots/home-leaderboard-scrollbar.png`
+
+**Impact:** route / UI
+
+### [Fixed] — 2026-11-20
+
+**Time:** 2026-11-20 10:01 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Mobile viewport containment fix, Top Signings transition speedup & minimal progress bar
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Resolved mobile viewport overflow where player names in the Tournament Top Signings marquee and the Round Highest Bid card were pushing past card boundaries and clipping against the screen edge.
+- Added a sleek, minimal amber timer progress bar at the top edge of the Tournament Top Signings marquee that smoothly tracks the countdown to the next marquee purchase.
+- Sped up the carousel advance rate from 6.5s to 4.0s with snappier, instant card transitions, eliminating sluggish delay.
+- Ensured 100% viewport containment across all mobile screen widths (375px–430px) so cards, badges, and franchise details remain strictly inside screen borders without horizontal stretching.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/` and `https://bupl-auction.vercel.app/live`
+- **Where to See It:**
+  1. Open `https://bupl-auction.vercel.app/` on a mobile device or narrow window (375px width).
+  2. Inspect the Tournament Top Signings marquee: Observe the 1px amber progress bar filling horizontally at the top of the card as the slide advances every 4 seconds.
+  3. Notice how player names (e.g., "Mustoba Mahmud Pranto") and winning franchise cards now wrap and truncate neatly within the card boundary without clipping or pushing outside the screen.
+  4. Scroll down to the Segment Results section: Observe the "Round Highest Bid" box is perfectly contained within the card without protruding past the right border.
+
+**Technical Implementation (Tech Lead):**
+- Diagnosed CSS Grid minimum content expansion bug where default `min-width: auto` on single-column grid tracks allowed long strings and child flex items to expand beyond the viewport.
+- Updated `src/components/home/post-auction-highlights.tsx`:
+  - Enforced `grid-cols-1 min-w-0 w-full` and `min-w-0` on all grid items and inner flex containers.
+  - Implemented 50ms interval progress timer (`slideProgress`) over `SLIDE_DURATION = 4000ms`, pausing on hover and resetting immediately on manual slide navigation (`goToSlide`).
+  - Added absolute 1px timer progress bar (`bg-gradient-to-r from-amber-500 via-amber-400 to-amber-300`) with `transition-[width]`.
+  - Switched motion slide transition to crisp `duration: 0.22, ease: [0.22, 1, 0.36, 1]` with directional `x: 14` offset.
+- Updated `src/components/common/player-photo.tsx` to detect Tailwind size classes (`size-`, `w-`, `h-`) so responsive classes override fixed pixel props on mobile screens.
+- Updated `src/components/broadcast/broadcast-showcase-completed.tsx` Golden Hammer Podium cards with `min-w-0 max-w-full truncate` to prevent text-induced card expansion on narrow displays.
+- Shipped directly to Vercel production and verified with headless Chrome CDP at 375px viewport with zero overflow breaches.
+
+**Files:**
+- `bupl-auction/src/components/home/post-auction-highlights.tsx`
+- `bupl-auction/src/components/common/player-photo.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-showcase-completed.tsx`
+- `bupl-auction/docs/screenshots/card-marquee-mobile.png`
+- `bupl-auction/docs/screenshots/card-segment-mobile.png`
+- `bupl-auction/docs/screenshots/fixed-home-mobile.png`
+- `bupl-auction/docs/screenshots/fixed-home-desktop.png`
+
+**Impact:** route / UI
+
+### [Added] — 2026-11-20
+
+**Time:** 2026-11-20 09:44 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Looping site-wide celebration, smooth transitions with motion & ticker slowdown
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Upgraded the celebration to run continuously and site-wide across all public pages (Home, Squads, History, Stats) with an optimized, lightweight ambient particle celebration layer.
+- Slowed down the bottom TV news ledger ticker by nearly 3x so tournament spectators and organizers can easily read every player signing, price, and club allocation without eye strain.
+- Replaced abrupt slide and scene changes with buttery smooth motion transitions and fading crossfades using Motion and GSAP.
+- Fully optimized mobile and tablet responsiveness across both `/` and `/live`, allowing horizontal swiping on scene tabs and marquee slides without layout breaking.
+- Removed all robot-like directive text ("replay celebration", "auto-advancing", "paused on hover", "click any club to inspect") for a clean, professional broadcast aesthetic.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/`, `https://bupl-auction.vercel.app/live`, and `https://bupl-auction.vercel.app/squads`
+- **Where to See It:**
+  1. Open `https://bupl-auction.vercel.app/`: Watch the continuous ambient gold/amber/emerald celebratory particles drift gently in the background across the entire page.
+  2. Notice the marquee signings slideshow crossfading smoothly without directive helper text.
+  3. Navigate to `https://bupl-auction.vercel.app/live`: Observe the slowed-down, legible bottom ticker ribbon and the smooth scene transitions.
+  4. Test on a mobile screen width (390px): The stage broadcast header, segment tabs, and Golden Hammer podium stack naturally and scroll horizontally without overflow.
+
+**Technical Implementation (Tech Lead):**
+- Installed `gsap`, `@gsap/react`, and `motion` (modern Framer Motion engine for React 19).
+- Created `src/components/common/ambient-celebration.tsx`:
+  - Canvas-based particle simulation with capped particle pool (45-48 particles).
+  - Handles `devicePixelRatio` scaling, window resize, tab visibility changes (`document.hidden` pauses RAF to conserve battery/CPU), and respects `prefers-reduced-motion`.
+- Mounted `<AmbientCelebration />` globally inside `src/app/(public)/layout.tsx` so all public routes receive the ambient celebration atmosphere.
+- Integrated `motion` `<AnimatePresence mode="wait">` inside `post-auction-highlights.tsx` and `broadcast-showcase-completed.tsx` for smooth cubic-bezier transitions.
+- Adjusted `.animate-ticker` duration in `src/app/globals.css` from 45s to 130s with `will-change: transform` and `translate3d` hardware acceleration.
+- Verified zero TypeScript (`tsc --noEmit`) and ESLint errors.
+- Deployed directly to Vercel production and verified with headless Chrome CDP automated capture.
+
+**Files:**
+- `bupl-auction/src/components/common/ambient-celebration.tsx`
+- `bupl-auction/src/app/(public)/layout.tsx`
+- `bupl-auction/src/components/home/post-auction-highlights.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-showcase-completed.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-live.tsx`
+- `bupl-auction/src/app/globals.css`
+- `bupl-auction/package.json`
+- `bupl-auction/package-lock.json`
+- `bupl-auction/docs/screenshots/smooth-home-desktop.png`
+- `bupl-auction/docs/screenshots/smooth-home-mobile.png`
+- `bupl-auction/docs/screenshots/smooth-live-desktop.png`
+- `bupl-auction/docs/screenshots/smooth-live-mobile.png`
+- `bupl-auction/docs/screenshots/smooth-squads-desktop.png`
+
+**Impact:** route / UI / backend
+
+### [Added] — 2026-11-20
+
+**Time:** 2026-11-20 09:27 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Unslop Post-Auction Sports Hybrid & TV Broadcast Showcase
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Redesigned the post-auction celebration experience with zero AI giveaways, simpler headlines, and authentic sports broadcast energy.
+- On the home page (`/`), added a confetti celebration on load with a replay button, an auto-advancing marquee signings slideshow with pause-on-hover, an interactive segment rounds simulator tab bar, and four high-contrast finance metrics.
+- On the projector live route (`/live`), replaced the static completion card with an automated television broadcast show cycling smoothly across four scenes: Tournament Champions Recap, The Golden Hammer Podium, Segment Rounds Replay, and Franchise Squad Leaderboard.
+- Added an uninterrupted TV news ticker ribbon at the bottom of the stage broadcast streaming all completed player sales.
+- Completely eliminated AI telltale patterns: no fake blinking live indicators after event completion, no Latinate buzzwords, no decorative emojis in headings, and clean sentence-case titles.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/` and `https://bupl-auction.vercel.app/live`
+- **Where to See It:**
+  1. Visit `https://bupl-auction.vercel.app/`: Notice the celebration confetti burst, clean "BUPL 2026 Cricket Auction Final Recap" banner, and the "Replay Celebration" button.
+  2. Interact with the Marquee Purchases slide deck: Use previous/next buttons or let it auto-advance through the top university signings.
+  3. Click through the Segment Results tabs (Segments 1 through 5) to inspect round-by-round winners and clearance numbers.
+  4. Navigate to `https://bupl-auction.vercel.app/live`: Experience the full-stage TV show with auto-advancing scene tabs, play/pause controls, a countdown progress bar, and the continuous bottom ledger ticker.
+
+**Technical Implementation (Tech Lead):**
+- Rewrote `src/components/home/post-auction-highlights.tsx` implementing a lightweight zero-dependency canvas confetti engine with `requestAnimationFrame` and automatic cleanup.
+- Built marquee slide deck with interval timer, touch/hover pause handlers, base price multiplier calculations, and franchise links.
+- Created `src/components/broadcast/broadcast-showcase-completed.tsx` with interval-driven scene state machine cycling across four tournament summary views with an active progress bar and manual tab controls.
+- Added `.animate-ticker` keyframe animation in `src/app/globals.css` with hover-pause and `prefers-reduced-motion` compliance.
+- Verified TypeScript type checking, ESLint rules, and production deployment on Vercel (`bupl-auction-hrk5wcxyi-zauwads-projects.vercel.app`).
+- Captured high-resolution desktop and mobile verification screenshots via Chrome CDP.
+
+**Files:**
+- `bupl-auction/src/components/home/post-auction-highlights.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-showcase-completed.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-live.tsx`
+- `bupl-auction/src/app/globals.css`
+- `bupl-auction/docs/screenshots/hybrid-home-desktop.png`
+- `bupl-auction/docs/screenshots/hybrid-home-mobile.png`
+- `bupl-auction/docs/screenshots/broadcast-show-desktop.png`
+- `bupl-auction/docs/screenshots/broadcast-show-mobile.png`
+
+**Impact:** route / UI / backend
+
+### [Added] — 2026-11-20
+
 **Time:** 2026-11-20 08:56 (UTC+6)
 **Author:** Antigravity agent
 **Issue:** Dynamic Post-Auction Highlights Hub & Enriched Stage Screen Recap

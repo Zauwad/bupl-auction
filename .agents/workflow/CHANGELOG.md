@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+### [Added] — 2026-11-20
+
+**Time:** 2026-11-20 10:40 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Enable celebration confetti across live broadcast stage
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Activated the ambient celebratory confetti system on the live television broadcast stage (`/live`) to match the post-tournament festive atmosphere of the main website.
+- Gently floating gold, emerald, sky blue, rose, and white celebration ribbons now drift continuously across the entire broadcast canvas without blocking clicks, taps, or player card interactions.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/live`
+- **Where to See It:**
+  1. Open `https://bupl-auction.vercel.app/live` on any desktop or mobile device.
+  2. Observe festive celebration confetti particles floating smoothly over the spotlight player hero and the 10-player round grid.
+  3. Tap or click on any player card or segment tab to confirm that controls and cards remain 100% interactive under the floating confetti layer.
+
+**Technical Implementation (Tech Lead):**
+- Enhanced `src/components/common/ambient-celebration.tsx`:
+  - Added optional `forceActive?: boolean` prop allowing immediate canvas mounting on the concluded broadcast stage without awaiting realtime settings subscription events.
+- Mounted `<AmbientCelebration forceActive />` inside `src/components/broadcast/broadcast-showcase-completed.tsx`:
+  - Positioned canvas as `fixed inset-0 z-30 pointer-events-none` ensuring zero interaction blocking for user input or auto-rotator controls.
+- Deployed to Vercel production (`https://bupl-auction.vercel.app/live`).
+- Captured desktop and mobile verification screenshots via Chrome CDP (`docs/screenshots/live-confetti-desktop.png` and `docs/screenshots/live-confetti-mobile.png`).
+
+**Files:**
+- `bupl-auction/src/components/common/ambient-celebration.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-showcase-completed.tsx`
+- `bupl-auction/docs/screenshots/live-confetti-desktop.png`
+- `bupl-auction/docs/screenshots/live-confetti-mobile.png`
+
+**Impact:** route / UI
+
 ### [Changed] — 2026-11-20
 
 **Time:** 2026-11-20 10:32 (UTC+6)

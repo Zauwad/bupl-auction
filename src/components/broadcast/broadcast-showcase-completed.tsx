@@ -20,6 +20,7 @@ import { formatPrice } from "@/lib/format";
 import { ClubLogo } from "@/components/common/club-logo";
 import { SEGMENT_COUNT, segmentDisplayName } from "@/lib/constants";
 import { computeAuctionStats, topBuyPerSegment } from "@/lib/stats";
+import { AmbientCelebration } from "@/components/common/ambient-celebration";
 import type { Club, Player, TournamentSettings } from "@/types";
 
 interface BroadcastShowcaseCompletedProps {
@@ -127,7 +128,8 @@ export function BroadcastShowcaseCompleted({
     featuredPlayer && stats.highestSale?.player.id === featuredPlayer.id;
 
   return (
-    <div className="flex min-h-screen w-screen flex-col overflow-x-hidden bg-black text-white select-none xl:h-screen xl:min-h-0 xl:overflow-hidden">
+    <div className="relative flex min-h-screen w-screen flex-col overflow-x-hidden bg-black text-white select-none xl:h-screen xl:min-h-0 xl:overflow-hidden">
+      <AmbientCelebration forceActive />
       {/* ════════ TOP BAR — EXACT LUXURY STAGE HEADER ════════ */}
       <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-red-900/40 bg-gradient-to-r from-[#2a1418] via-zinc-950 to-[#2a1418] px-4 sm:px-6">
         <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">

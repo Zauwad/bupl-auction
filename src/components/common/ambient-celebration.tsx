@@ -29,16 +29,21 @@ const PALETTE = [
   "#f43f5e", // Rose
 ];
 
-export function AmbientCelebration() {
+interface AmbientCelebrationProps {
+  forceActive?: boolean;
+}
+
+export function AmbientCelebration({ forceActive }: AmbientCelebrationProps = {}) {
   const [settings, setSettings] = useState<TournamentSettings | null | undefined>(undefined);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    if (forceActive) return;
     const unsub = subscribeSpectatorSettings(setSettings);
     return () => unsub();
-  }, []);
+  }, [forceActive]);
 
-  const isCompleted = settings?.auctionStatus === "completed";
+  const isCompleted = forceActive || settings?.auctionStatus === "completed";
 
   useEffect(() => {
     if (!isCompleted) return;

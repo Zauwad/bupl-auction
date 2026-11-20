@@ -2,6 +2,83 @@
 
 ## [Unreleased]
 
+### [Added] — 2026-11-20
+
+**Time:** 2026-11-20 08:56 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Dynamic Post-Auction Highlights Hub & Enriched Stage Screen Recap
+**Status:** Shipped to Prod
+
+**Layman Summary (CEO / Non-Tech):**
+- Built an automatic post-event experience for the site that transforms the home page into an official tournament recap hub whenever the auction status is completed.
+- Highlights the biggest moments of the tournament: celebration banner with locked rosters, key overall metrics (total money spent, clearance rate, record signing), and a Golden Hammer podium featuring the top 3 most expensive player signings with club badges.
+- Adds a segment-by-segment breakdown showcasing the marquee pick in each round alongside an interactive club spending leaderboard.
+- Features a complete 10-club squad preview grid letting visitors immediately jump into any club's finalized roster.
+- Upgraded the projector broadcast screen (/live) to spotlight the tournament's record buy and provide a direct link to the full recap.
+
+**UI & Screen Navigation:**
+- **Route:** `https://bupl-auction.vercel.app/` and `https://bupl-auction.vercel.app/live`
+- **Where to See It:**
+  1. Visit the home page (`https://bupl-auction.vercel.app`). Because the auction status is "completed", the site displays the celebratory Post-Auction Highlights Hub.
+  2. Test the two main action buttons: "Explore Club Squads" and "Bid History".
+  3. Scroll down through the Golden Hammer podium, Round Champions by segment, Club Spending Leaderboard, and the 10-club quick grid.
+  4. Visit `/live` to see the enriched Final Hammer card with the record buy and recap link.
+
+**Technical Implementation (Tech Lead):**
+- Built `topBuyPerSegment` pure analytical helper in `src/lib/stats.ts` to compute marquee sales and segment totals defensively.
+- Created `PostAuctionHighlights` in `src/components/home/post-auction-highlights.tsx` consuming spectator edge-cached state, computing rankings, and rendering responsive cards with initials fallbacks and SVG abbreviations.
+- Created `HomeView` client wrapper in `src/components/home/home-view.tsx` with 5-state skeleton loading, dynamically toggling between live auction countdown and completed highlights.
+- Enriched `src/components/broadcast/broadcast-live.tsx` completion branch with `topSale` computation and link to the home recap hub.
+- Deployed to Vercel production and verified with automated CDP screenshots across desktop and mobile.
+
+**Files:**
+- `bupl-auction/src/lib/stats.ts`
+- `bupl-auction/src/components/home/post-auction-highlights.tsx`
+- `bupl-auction/src/components/home/home-view.tsx`
+- `bupl-auction/src/app/(public)/page.tsx`
+- `bupl-auction/src/components/broadcast/broadcast-live.tsx`
+- `bupl-auction/README.md`
+- `bupl-auction/docs/screenshots/highlights-home-desktop.png`
+- `bupl-auction/docs/screenshots/highlights-home-mobile.png`
+- `bupl-auction/docs/screenshots/live-final-hammer.png`
+
+**Impact:** route / UI / backend
+
+### [Changed] — 2026-11-20
+
+**Time:** 2026-11-20 08:38 (UTC+6)
+**Author:** Antigravity agent
+**Issue:** Portfolio-Grade README, Handover Architecture & Production Case Study Overhaul
+**Status:** Committed
+
+**Layman Summary (CEO / Non-Tech):**
+- Restructured the project documentation from a basic developer scratchpad into a portfolio-grade production case study showcasing the collaborative handover and modern scaling work.
+- Clearly credits the original architecture to Adib Shaikh and the production hardening, 1,000+ viewer edge caching, disaster recovery, and mobile responsiveness to Ridwanul Azim (Zauwad).
+- Embedded high-resolution visual previews of the live stage broadcast, operator console, and emergency disaster recovery modals directly in the repository documentation.
+- Documented the real-world high-concurrency bottleneck (Firebase 100-connection free tier cap vs 1,000 university viewers) and demonstrated how the zero-cost edge caching shield solved it with sub-45ms response times.
+- Formatted official GitHub repository metadata including the title, About tagline, and discoverability topics.
+
+**UI & Screen Navigation:**
+- **Route:** `README.md` and `docs/screenshots/`
+- **Where to See It:** View the updated `README.md` at the project root or on GitHub. Contains high-resolution site preview screenshots, architecture diagrams, benchmark comparisons, and disaster recovery runbooks.
+
+**Technical Implementation (Tech Lead):**
+- Authored a comprehensive `README.md` with Next.js 16 / React 19 / Firebase / Tailwind v4 / Vercel badges, live URL links, and an annotated system architecture tree.
+- Embedded a Mermaid architecture flowchart depicting the Edge Caching layer (`/api/auction-state`, `s-maxage=2, stale-while-revalidate=5`) isolating Firebase RTDB WebSockets from public audience traffic.
+- Added a benchmark metrics table comparing direct Firebase WebSocket saturation against edge CDN caching.
+- Created `docs/screenshots/` storing optimized PNG screenshots for live broadcast, admin live console, mobile displays, and disaster recovery modal flows.
+- Retained complete local development instructions, Firebase RTDB rules setup, environment variable reference, and seed scripts.
+
+**Files:**
+- `bupl-auction/README.md`
+- `bupl-auction/docs/screenshots/admin-live-console.png`
+- `bupl-auction/docs/screenshots/disaster-recovery-backup.png`
+- `bupl-auction/docs/screenshots/disaster-recovery-restore.png`
+- `bupl-auction/docs/screenshots/live-broadcast-desktop.png`
+- `bupl-auction/docs/screenshots/live-broadcast-mobile.png`
+
+**Impact:** config / UI
+
 ### Added — 2026-11-19
 
 **Time:** 2026-11-19 17:05 (UTC+6)

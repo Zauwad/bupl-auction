@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   subscribeSettings as subscribeFirebaseSettings,
   subscribeClubs as subscribeFirebaseClubs,
@@ -145,6 +146,15 @@ export function BroadcastLive() {
       history?.some((h) => h.playerId === currentPlayer.id && h.action === "unsold"),
   );
 
+  const topSale = useMemo(() => {
+    const sold = (players ?? []).filter((p) => p.status === "sold" && p.finalPrice !== null);
+    if (sold.length === 0) return null;
+    const sorted = [...sold].sort((a, b) => (b.finalPrice ?? 0) - (a.finalPrice ?? 0));
+    const player = sorted[0];
+    const club = (clubs ?? []).find((c) => c.id === player.purchasedByClubId) ?? null;
+    return { player, club };
+  }, [players, clubs]);
+
   /* ---------- Loading ---------- */
   if (loading) {
     return (
@@ -230,21 +240,22 @@ export function BroadcastLive() {
           {/* Player card */}
           <div className="relative flex flex-1 min-h-[420px] flex-col overflow-hidden rounded-2xl border border-red-900/50 bg-gradient-to-b from-[#3a1f22] via-[#2b1518] to-[#1d0e11] xl:min-h-0">
             {status === "completed" ? (
-              <div className="flex h-full flex-col items-center justify-center gap-5 p-6 text-center">
+              <div className="flex h-full flex-col items-center justify-center gap-4 p-5 text-center sm:gap-5 sm:p-6">
                 <Trophy
-                  className="size-24 text-amber-400 drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]"
+                  className="size-16 text-amber-400 drop-shadow-[0_0_35px_rgba(251,191,36,0.4)] sm:size-20"
                   strokeWidth={1.25}
                   aria-hidden
                 />
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-amber-400">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-amber-400 sm:text-[11px]">
                     Auction complete
                   </p>
-                  <h1 className="font-display mt-2 text-4xl font-bold uppercase leading-[0.95] text-zinc-100">
+                  <h1 className="font-display mt-1 text-3xl font-bold uppercase leading-[0.95] text-zinc-100 sm:mt-2 sm:text-4xl">
                     Final<br />Hammer
                   </h1>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+
+                <div className="grid w-full max-w-sm grid-cols-3 gap-2">
                   {[
                     { label: "Sold", value: String(tournamentSold) },
                     { label: "Unsold", value: String(tournamentUnsold) },
@@ -252,17 +263,50 @@ export function BroadcastLive() {
                   ].map((item) => (
                     <div
                       key={item.label}
-                      className="rounded-lg border border-white/10 bg-black/30 px-4 py-3"
+                      className="rounded-lg border border-white/10 bg-black/30 p-2.5 sm:px-4 sm:py-3"
                     >
-                      <p className="font-display text-2xl font-semibold tabular-nums text-zinc-100">
+                      <p className="font-display text-lg font-semibold tabular-nums text-zinc-100 sm:text-xl">
                         {item.value}
                       </p>
-                      <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                      <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.2em] text-zinc-500 sm:text-[9px]">
                         {item.label}
                       </p>
                     </div>
                   ))}
                 </div>
+
+                {topSale && (
+                  <div className="flex w-full max-w-sm items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-2.5 text-left">
+                    <PlayerPhoto
+                      photoUrl={topSale.player.photoUrl}
+                      name={topSale.player.name}
+                      size={48}
+                      className="rounded-lg border border-amber-400/40"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-amber-400">
+                        Record Buy · Seg {topSale.player.segment}
+                      </p>
+                      <p className="truncate text-xs font-black text-zinc-100 sm:text-sm">
+                        {topSale.player.name}
+                      </p>
+                      <p className="font-display text-xs font-black text-amber-300 sm:text-sm">
+                        {formatPrice(topSale.player.finalPrice ?? 0)}{" "}
+                        <span className="font-sans text-[10px] font-normal text-zinc-400">
+                          ({topSale.club?.name ?? "Club"})
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-950 transition hover:bg-amber-300"
+                >
+                  <Trophy className="size-3.5" />
+                  View Full Post-Auction Recap & Squads
+                </Link>
               </div>
             ) : status === "not_started" ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center sm:gap-5">

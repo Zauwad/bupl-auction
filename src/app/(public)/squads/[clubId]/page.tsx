@@ -24,7 +24,9 @@ function SquadDetailSkeleton() {
 
 export default function SquadDetailPage({
   params,
-}: PageProps<"/squads/[clubId]">) {
+}: {
+  params: Promise<{ clubId: string }>;
+}) {
   return (
     <Suspense fallback={<SquadDetailSkeleton />}>
       <SquadDetailLoader params={params} />

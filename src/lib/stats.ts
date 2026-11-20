@@ -109,3 +109,39 @@ export function salesBySegment(
     };
   });
 }
+
+export interface SegmentTopBuy {
+  segment: number;
+  player: Player | null;
+  club: Club | null;
+  totalSalesValue: number;
+  soldCount: number;
+}
+
+/** Top player purchase and summary for each segment. */
+export function topBuyPerSegment(
+  players: Player[],
+  clubs: Club[],
+  segments: number,
+): SegmentTopBuy[] {
+  return Array.from({ length: segments }, (_, i) => {
+    const segmentNumber = i + 1;
+    const inSegment = players.filter((p) => p.segment === segmentNumber);
+    const sold = inSegment.filter((p) => p.status === "sold" && p.finalPrice !== null);
+    const topPlayer =
+      sold.length > 0
+        ? [...sold].sort((a, b) => (b.finalPrice ?? 0) - (a.finalPrice ?? 0))[0]
+        : null;
+    const club = topPlayer
+      ? clubs.find((c) => c.id === topPlayer.purchasedByClubId) ?? null
+      : null;
+
+    return {
+      segment: segmentNumber,
+      player: topPlayer,
+      club,
+      totalSalesValue: sold.reduce((sum, p) => sum + (p.finalPrice ?? 0), 0),
+      soldCount: sold.length,
+    };
+  });
+}
